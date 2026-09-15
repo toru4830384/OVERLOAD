@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: overload-api
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/overload_db
+    username: root
+    password:
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
