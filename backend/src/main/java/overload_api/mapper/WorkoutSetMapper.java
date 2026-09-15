@@ -10,9 +10,17 @@ import org.apache.ibatis.annotations.Select;
 import overload_api.controller.dto.WorkoutHistoryRow;
 import overload_api.model.WorkoutSet;
 
+/**
+ * ワークアウトセット情報をデータベースから取得・登録するMapper。
+ */
 @Mapper
 public interface WorkoutSetMapper {
 
+    /**
+     * 全てのワークアウトセットを取得する。
+     *
+     * @return ワークアウトセット一覧
+     */
     @Select("""
         SELECT
             id,
@@ -26,27 +34,38 @@ public interface WorkoutSetMapper {
         """)
     List<WorkoutSet> findAll();
 
+    /**
+     * ワークアウトセットを登録する。
+     *
+     * @param workoutSet 登録するワークアウトセット情報
+     */
     @Insert("""
-    	    INSERT INTO workout_sets (
-    	        session_id,
-    	        exercise_id,
-    	        set_number,
-    	        weight_kg,
-    	        reps,
-    	        note
-    	    )
-    	    VALUES (
-    	        #{sessionId},
-    	        #{exerciseId},
-    	        #{setNumber},
-    	        #{weightKg},
-    	        #{reps},
-    	        #{note}
-    	    )
-    	    """)
+        INSERT INTO workout_sets (
+            session_id,
+            exercise_id,
+            set_number,
+            weight_kg,
+            reps,
+            note
+        )
+        VALUES (
+            #{sessionId},
+            #{exerciseId},
+            #{setNumber},
+            #{weightKg},
+            #{reps},
+            #{note}
+        )
+        """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
     void insert(WorkoutSet workoutSet);
 
+    /**
+     * 指定されたユーザーのワークアウト履歴を取得する。
+     *
+     * @param userId ユーザーID
+     * @return ワークアウト履歴一覧
+     */
     @Select("""
         SELECT
             ws.session_id AS sessionId,
@@ -66,4 +85,5 @@ public interface WorkoutSetMapper {
         ORDER BY ws.session_id DESC, ws.set_number
         """)
     List<WorkoutHistoryRow> findHistoryByUserId(Long userId);
+
 }

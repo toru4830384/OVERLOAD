@@ -7,9 +7,17 @@ import org.apache.ibatis.annotations.Select;
 
 import overload_api.model.Exercise;
 
+/**
+ * 種目情報をデータベースから取得するMapper。
+ */
 @Mapper
 public interface ExerciseMapper {
 
+    /**
+     * 全ての種目情報を取得する。
+     *
+     * @return 種目情報一覧
+     */
     @Select("""
         SELECT
             id,
@@ -22,4 +30,5 @@ public interface ExerciseMapper {
         ORDER BY id
         """)
     List<Exercise> findAll();
+
 }

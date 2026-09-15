@@ -5,23 +5,26 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import overload_api.controller.dto.WorkoutExerciseRequest;
 import overload_api.controller.dto.WorkoutHistoryResponse;
 import overload_api.controller.dto.WorkoutHistoryRow;
 import overload_api.controller.dto.WorkoutHistorySetResponse;
-import overload_api.controller.dto.WorkoutExerciseRequest;
 import overload_api.controller.dto.WorkoutRequest;
 import overload_api.controller.dto.WorkoutSetRequest;
+import overload_api.mapper.UserMapper;
 import overload_api.mapper.WorkoutSessionMapper;
 import overload_api.mapper.WorkoutSetMapper;
-import overload_api.mapper.UserMapper;
 import overload_api.model.WorkoutSession;
 import overload_api.model.WorkoutSet;
 
+/**
+ * ワークアウトに関する業務処理を提供するサービス。
+ */
 @Service
 public class WorkoutService {
 
@@ -29,6 +32,13 @@ public class WorkoutService {
     private final WorkoutSetMapper workoutSetMapper;
     private final UserMapper userMapper;
 
+    /**
+     * WorkoutServiceを生成する。
+     *
+     * @param workoutSessionMapper ワークアウトセッションを操作するMapper
+     * @param workoutSetMapper ワークアウトセットを操作するMapper
+     * @param userMapper ユーザー情報を操作するMapper
+     */
     public WorkoutService(
             WorkoutSessionMapper workoutSessionMapper,
             WorkoutSetMapper workoutSetMapper,
@@ -38,50 +48,54 @@ public class WorkoutService {
         this.userMapper = userMapper;
     }
 
+    /**
+     * ワークアウトを登録する。
+     *
+     * @param request ワークアウト登録リクエスト
+     * @return 登録したワークアウトセット一覧
+     * @throws ResponseStatusException ユーザーが存在しない場合
+     */
     @Transactional
     public List<WorkoutSet> create(WorkoutRequest request) {
-    	
-    	if (userMapper.findById(request.getUserId()) == null) {
-    	    throw new ResponseStatusException(
-    	            HttpStatus.NOT_FOUND,
-    	            "User not found");
-    	}
+        if (userMapper.findById(request.getUserId()) == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "User not found");
+        }
 
         WorkoutSession workoutSession = new WorkoutSession();
         workoutSession.setUserId(request.getUserId());
-
         workoutSessionMapper.insert(workoutSession);
 
         Long sessionId = workoutSession.getId();
-
         List<WorkoutSet> workoutSets = new ArrayList<>();
 
+        // 種目ごとのセット情報をワークアウトセットとして登録する。
         for (WorkoutExerciseRequest exerciseRequest : request.getExercises()) {
-
             for (WorkoutSetRequest setRequest : exerciseRequest.getSets()) {
-
                 WorkoutSet workoutSet = new WorkoutSet();
-
                 workoutSet.setSessionId(sessionId);
                 workoutSet.setExerciseId(exerciseRequest.getExerciseId());
                 workoutSet.setSetNumber(setRequest.getSetNumber());
                 workoutSet.setWeightKg(setRequest.getWeightKg());
                 workoutSet.setReps(setRequest.getReps());
                 workoutSet.setNote(setRequest.getNote());
-
                 workoutSetMapper.insert(workoutSet);
-
                 workoutSets.add(workoutSet);
             }
         }
 
         workoutSessionMapper.updateFinishedAt(sessionId);
-
         return workoutSets;
     }
 
+    /**
+     * 指定されたユーザーのワークアウト履歴を取得する。
+     *
+     * @param userId ユーザーID
+     * @return ワークアウト履歴一覧
+     */
     public List<WorkoutHistoryResponse> findHistoryByUserId(Long userId) {
-
         List<WorkoutHistoryRow> rows =
                 workoutSetMapper.findHistoryByUserId(userId);
 
@@ -90,34 +104,30 @@ public class WorkoutService {
 
         for (WorkoutHistoryRow row : rows) {
 
+            // 同一セッション内の同一種目ごとにセットをまとめるためのキーを作成する。
             String key = row.getSessionId() + "-" + row.getExerciseId();
-
             WorkoutHistoryResponse response = historyMap.get(key);
 
             if (response == null) {
-
                 response = new WorkoutHistoryResponse();
-
                 response.setSessionId(row.getSessionId());
                 response.setStartedAt(row.getStartedAt());
                 response.setExerciseId(row.getExerciseId());
                 response.setExerciseName(row.getExerciseName());
                 response.setNote(row.getNote());
                 response.setSets(new ArrayList<>());
-
                 historyMap.put(key, response);
             }
 
             WorkoutHistorySetResponse set =
                     new WorkoutHistorySetResponse();
-
             set.setSetNumber(row.getSetNumber());
             set.setWeightKg(row.getWeightKg());
             set.setReps(row.getReps());
-
             response.getSets().add(set);
         }
 
         return new ArrayList<>(historyMap.values());
     }
+
 }
