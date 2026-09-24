@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
@@ -12,10 +11,15 @@ import org.junit.jupiter.api.Test;
 
 import overload_api.model.WorkoutSession;
 import overload_api.service.WorkoutSessionService;
-import overload_api.controller.dto.WorkoutSessionRequest;
 
+/**
+ * WorkoutSessionControllerの単体テスト。
+ */
 class WorkoutSessionControllerTest {
 
+    /**
+     * セッションが存在する場合、一覧を返すことを確認する。
+     */
     @Test
     void findAll_セッションが存在する場合_一覧を返す() {
         WorkoutSessionService workoutSessionService =
@@ -45,7 +49,10 @@ class WorkoutSessionControllerTest {
         assertEquals(2L, result.get(1).getId());
         assertEquals(1L, result.get(1).getUserId());
     }
-    
+
+    /**
+     * セッションが存在しない場合、空のリストを返すことを確認する。
+     */
     @Test
     void findAll_セッションが存在しない場合_空のリストを返す() {
         WorkoutSessionService workoutSessionService =
@@ -62,33 +69,5 @@ class WorkoutSessionControllerTest {
 
         assertNotNull(result);
         assertEquals(0, result.size());
-    }
-    
-    @Test
-    void create_ユーザーIDを指定した場合_セッションを作成して返す() {
-        WorkoutSessionService workoutSessionService =
-                mock(WorkoutSessionService.class);
-
-        WorkoutSessionRequest request =
-                new WorkoutSessionRequest();
-        request.setUserId(1L);
-
-        WorkoutSession session = new WorkoutSession();
-        session.setId(1L);
-        session.setUserId(1L);
-
-        when(workoutSessionService.create(1L))
-                .thenReturn(session);
-
-        WorkoutSessionController workoutSessionController =
-                new WorkoutSessionController(workoutSessionService);
-
-        WorkoutSession result =
-                workoutSessionController.create(request);
-
-        assertNotNull(result);
-        assertEquals(1L, result.getId());
-        assertEquals(1L, result.getUserId());
-        verify(workoutSessionService).create(1L);
     }
 }

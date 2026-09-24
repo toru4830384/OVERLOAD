@@ -1,6 +1,5 @@
 package overload_api.service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -33,19 +32,4 @@ public class WorkoutSessionService {
     public List<WorkoutSession> findAll() {
         return workoutSessionMapper.findAll();
     }
-
-    /**
-     * ワークアウトセッションを新規作成する。
-     *
-     * @param userId ユーザーID
-     * @return 作成したワークアウトセッション
-     */
-    public WorkoutSession create(Long userId) {
-        WorkoutSession workoutSession = new WorkoutSession();
-        workoutSession.setUserId(userId);
-        workoutSession.setStartedAt(LocalDateTime.now());
-        workoutSessionMapper.insert(workoutSession);
-        return workoutSession;
-    }
-
 }

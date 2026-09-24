@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.verify;
 
 import java.util.List;
 
@@ -13,8 +12,14 @@ import org.junit.jupiter.api.Test;
 import overload_api.mapper.WorkoutSessionMapper;
 import overload_api.model.WorkoutSession;
 
+/**
+ * WorkoutSessionServiceの単体テスト。
+ */
 class WorkoutSessionServiceTest {
 
+    /**
+     * セッションが存在する場合、一覧を返すことを確認する。
+     */
     @Test
     void findAll_セッションが存在する場合_一覧を返す() {
         WorkoutSessionMapper workoutSessionMapper =
@@ -44,7 +49,10 @@ class WorkoutSessionServiceTest {
         assertEquals(2L, result.get(1).getId());
         assertEquals(1L, result.get(1).getUserId());
     }
-    
+
+    /**
+     * セッションが存在しない場合、空のリストを返すことを確認する。
+     */
     @Test
     void findAll_セッションが存在しない場合_空のリストを返す() {
         WorkoutSessionMapper workoutSessionMapper =
@@ -61,22 +69,5 @@ class WorkoutSessionServiceTest {
 
         assertNotNull(result);
         assertEquals(0, result.size());
-    }
-    
-    @Test
-    void create_ユーザーIDを指定した場合_セッションを作成して返す() {
-        WorkoutSessionMapper workoutSessionMapper =
-                mock(WorkoutSessionMapper.class);
-
-        WorkoutSessionService workoutSessionService =
-                new WorkoutSessionService(workoutSessionMapper);
-
-        WorkoutSession result =
-                workoutSessionService.create(1L);
-
-        assertNotNull(result);
-        assertEquals(1L, result.getUserId());
-        assertNotNull(result.getStartedAt());
-        verify(workoutSessionMapper).insert(result);
     }
 }
