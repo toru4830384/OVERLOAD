@@ -10,6 +10,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import overload_api.exception.ResourceNotFoundException;
 import overload_api.mapper.UserMapper;
 import overload_api.mapper.WorkoutSessionMapper;
 import overload_api.mapper.WorkoutSetMapper;
@@ -142,14 +143,17 @@ class WorkoutServiceTest {
     }
 
     /**
-     * 存在しないユーザーの場合に404エラーを返すことを確認する。
+     * 存在しないユーザーの場合にリソース未存在例外を返すことを確認する。
      */
     @Test
-    void create_存在しないユーザーの場合_404例外を返す() {
+    void create_存在しないユーザーの場合_リソース未存在例外を返す() {
+
         WorkoutSessionMapper workoutSessionMapper =
                 mock(WorkoutSessionMapper.class);
+
         WorkoutSetMapper workoutSetMapper =
                 mock(WorkoutSetMapper.class);
+
         UserMapper userMapper =
                 mock(UserMapper.class);
 
@@ -161,18 +165,17 @@ class WorkoutServiceTest {
 
         WorkoutRequest request =
                 new WorkoutRequest();
+
         request.setUserId(9999L);
 
         when(userMapper.findById(9999L)).thenReturn(null);
 
-        org.springframework.web.server.ResponseStatusException exception =
+        ResourceNotFoundException exception =
                 org.junit.jupiter.api.Assertions.assertThrows(
-                        org.springframework.web.server.ResponseStatusException.class,
+                        ResourceNotFoundException.class,
                         () -> workoutService.create(request));
 
-        assertEquals(
-                org.springframework.http.HttpStatus.NOT_FOUND,
-                exception.getStatusCode());
+        assertEquals("User not found", exception.getMessage());
     }
 
     /**

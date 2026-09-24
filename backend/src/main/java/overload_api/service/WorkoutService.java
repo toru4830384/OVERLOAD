@@ -5,11 +5,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
+import overload_api.exception.ResourceNotFoundException;
 import overload_api.mapper.UserMapper;
 import overload_api.mapper.WorkoutSessionMapper;
 import overload_api.mapper.WorkoutSetMapper;
@@ -53,14 +52,12 @@ public class WorkoutService {
      *
      * @param request ワークアウト登録リクエスト
      * @return 登録したワークアウトセット一覧
-     * @throws ResponseStatusException ユーザーが存在しない場合
+     * @throws ResourceNotFoundException ユーザーが存在しない場合
      */
     @Transactional
     public List<WorkoutSet> create(WorkoutRequest request) {
         if (userMapper.findById(request.getUserId()) == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "User not found");
+            throw new ResourceNotFoundException("User not found");
         }
 
         WorkoutSession workoutSession = new WorkoutSession();
@@ -107,7 +104,6 @@ public class WorkoutService {
                 new LinkedHashMap<>();
 
         for (WorkoutHistoryRow row : rows) {
-
             // 同一セッション内の同一種目ごとにセットをまとめるためのキーを作成する。
             String key = row.getSessionId() + "-" + row.getExerciseId();
             WorkoutHistoryResponse response = historyMap.get(key);
@@ -133,5 +129,4 @@ public class WorkoutService {
 
         return new ArrayList<>(historyMap.values());
     }
-
 }

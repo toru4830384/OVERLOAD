@@ -21,6 +21,7 @@ import overload_api.controller.dto.WorkoutHistoryResponse;
 import overload_api.controller.dto.WorkoutHistorySetResponse;
 import overload_api.controller.dto.WorkoutRequest;
 import overload_api.controller.dto.WorkoutSetRequest;
+import overload_api.exception.ResourceNotFoundException;
 import overload_api.model.WorkoutSet;
 import overload_api.service.WorkoutService;
 
@@ -54,6 +55,13 @@ public class WorkoutController {
     public List<WorkoutSet> create(@Valid @RequestBody WorkoutRequest request) {
         try {
             return workoutService.create(toServiceRequest(request));
+        } catch (ResourceNotFoundException e) {
+            // Serviceで発生したリソース未存在エラーをAPIの404エラーとして返す。
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    e.getMessage(),
+                    e
+            );
         } catch (UncategorizedSQLException e) {
             // データベース登録時の不正な入力をAPIの400エラーとして返す。
             throw new ResponseStatusException(
@@ -97,11 +105,9 @@ public class WorkoutController {
 
                     WorkoutHistorySetResponse set =
                             new WorkoutHistorySetResponse();
-
                     set.setSetNumber(serviceSet.getSetNumber());
                     set.setWeightKg(serviceSet.getWeightKg());
                     set.setReps(serviceSet.getReps());
-
                     sets.add(set);
                 }
             }
@@ -168,7 +174,6 @@ public class WorkoutController {
         }
 
         serviceRequest.setExercises(serviceExercises);
-
         return serviceRequest;
     }
 }
