@@ -72,6 +72,10 @@ public class WorkoutService {
 
         // 種目ごとのセット情報をワークアウトセットとして登録する。
         for (WorkoutExerciseRequest exerciseRequest : request.getExercises()) {
+            if (exerciseRequest.getSets() == null) {
+                continue;
+            }
+
             for (WorkoutSetRequest setRequest : exerciseRequest.getSets()) {
                 WorkoutSet workoutSet = new WorkoutSet();
                 workoutSet.setSessionId(sessionId);

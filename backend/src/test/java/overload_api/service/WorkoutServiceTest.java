@@ -85,7 +85,50 @@ class WorkoutServiceTest {
         assertEquals(10, result.get(0).getReps());
         assertEquals("単体テスト", result.get(0).getNote());
     }
+    
+    @Test
+    void create_セットがnullの場合_セット登録をスキップして空のリストを返す() {
+        WorkoutSessionMapper workoutSessionMapper =
+                mock(WorkoutSessionMapper.class);
+        WorkoutSetMapper workoutSetMapper =
+                mock(WorkoutSetMapper.class);
+        UserMapper userMapper =
+                mock(UserMapper.class);
 
+        WorkoutService workoutService =
+                new WorkoutService(
+                        workoutSessionMapper,
+                        workoutSetMapper,
+                        userMapper);
+
+        User user = new User();
+        user.setId(1L);
+        when(userMapper.findById(1L)).thenReturn(user);
+
+        org.mockito.Mockito.doAnswer(invocation -> {
+            overload_api.model.WorkoutSession session =
+                    invocation.getArgument(0);
+            session.setId(102L);
+            return null;
+        }).when(workoutSessionMapper).insert(
+                org.mockito.ArgumentMatchers.any());
+
+        WorkoutExerciseRequest exerciseRequest =
+                new WorkoutExerciseRequest();
+        exerciseRequest.setExerciseId(1L);
+        exerciseRequest.setSets(null);
+
+        WorkoutRequest request = new WorkoutRequest();
+        request.setUserId(1L);
+        request.setExercises(List.of(exerciseRequest));
+
+        List<WorkoutSet> result =
+                workoutService.create(request);
+
+        assertNotNull(result);
+        assertEquals(0, result.size());
+    }
+    
     @Test
     void create_存在しないユーザーの場合_404例外を返す() {
         WorkoutSessionMapper workoutSessionMapper =
