@@ -56,7 +56,7 @@ class WorkoutSetControllerTest {
         assertEquals(60, result.get(1).getWeightKg().intValue());
         assertEquals(8, result.get(1).getReps());
     }
-    
+
     @Test
     void findAll_セットが存在しない場合_空のリストを返す() {
         WorkoutSetService workoutSetService =
@@ -74,7 +74,7 @@ class WorkoutSetControllerTest {
         assertNotNull(result);
         assertEquals(0, result.size());
     }
-    
+
     @Test
     void create_セット情報を指定した場合_セットを作成して返す() {
         WorkoutSetService workoutSetService =
@@ -102,7 +102,8 @@ class WorkoutSetControllerTest {
                 1L,
                 1,
                 new BigDecimal("50.00"),
-                10
+                10,
+                "テスト"
         )).thenReturn(workoutSet);
 
         WorkoutSetController workoutSetController =
@@ -121,13 +122,14 @@ class WorkoutSetControllerTest {
                 result.getWeightKg()
         );
         assertEquals(10, result.getReps());
-        
+
         verify(workoutSetService).create(
                 1L,
                 1L,
                 1,
                 new BigDecimal("50.00"),
-                10
+                10,
+                "テスト"
         );
     }
 }

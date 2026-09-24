@@ -62,7 +62,7 @@ class WorkoutSetServiceTest {
         assertEquals(new BigDecimal("60.00"), result.get(1).getWeightKg());
         assertEquals(8, result.get(1).getReps());
     }
-    
+
     @Test
     void findAll_セットが存在しない場合_空のリストを返す() {
         WorkoutSetMapper workoutSetMapper =
@@ -80,7 +80,7 @@ class WorkoutSetServiceTest {
         assertNotNull(result);
         assertEquals(0, result.size());
     }
-    
+
     @Test
     void create_セット情報を指定した場合_セットを作成して返す() {
         WorkoutSetMapper workoutSetMapper =
@@ -90,6 +90,7 @@ class WorkoutSetServiceTest {
                 new WorkoutSetService(workoutSetMapper);
 
         BigDecimal weightKg = new BigDecimal("50.00");
+        String note = "テスト";
 
         WorkoutSet result =
                 workoutSetService.create(
@@ -97,7 +98,8 @@ class WorkoutSetServiceTest {
                         1L,
                         1,
                         weightKg,
-                        10);
+                        10,
+                        note);
 
         assertNotNull(result);
         assertEquals(10L, result.getSessionId());
@@ -105,6 +107,7 @@ class WorkoutSetServiceTest {
         assertEquals(1, result.getSetNumber());
         assertEquals(weightKg, result.getWeightKg());
         assertEquals(10, result.getReps());
+        assertEquals(note, result.getNote());
         verify(workoutSetMapper).insert(result);
     }
 }

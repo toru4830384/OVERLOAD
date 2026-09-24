@@ -53,7 +53,8 @@ public class WorkoutSetController {
                 request.getExerciseId(),
                 request.getSetNumber(),
                 request.getWeightKg(),
-                request.getReps()
+                request.getReps(),
+                request.getNote()
         );
     }
 }
