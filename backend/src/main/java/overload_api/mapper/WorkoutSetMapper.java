@@ -82,7 +82,7 @@ public interface WorkoutSetMapper {
         INNER JOIN exercises e
             ON ws.exercise_id = e.id
         WHERE wss.user_id = #{userId}
-        ORDER BY ws.session_id DESC, ws.set_number
+        ORDER BY wss.started_at DESC, ws.set_number
         """)
     List<WorkoutHistoryRow> findHistoryByUserId(Long userId);
 
