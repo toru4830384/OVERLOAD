@@ -7,14 +7,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
-import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.UncategorizedSQLException;
-import org.springframework.web.server.ResponseStatusException;
 
 import overload_api.controller.dto.WorkoutExerciseRequest;
 import overload_api.controller.dto.WorkoutHistoryResponse;
@@ -24,7 +20,7 @@ import overload_api.model.WorkoutSet;
 import overload_api.service.WorkoutService;
 
 /**
- * WorkoutControllerのテストクラス。
+ * WorkoutControllerの単体テストを行うクラス。
  */
 class WorkoutControllerTest {
 
@@ -84,40 +80,6 @@ class WorkoutControllerTest {
                 new BigDecimal("50.00"),
                 result.get(0).getWeightKg());
         assertEquals(10, result.get(0).getReps());
-    }
-
-    /**
-     * ServiceでSQLエラーが発生した場合に、Controllerが400エラーへ変換することを確認する。
-     */
-    @Test
-    void create_SQLエラーが発生した場合_400例外を返す() {
-        WorkoutService workoutService =
-                mock(WorkoutService.class);
-
-        WorkoutController workoutController =
-                new WorkoutController(workoutService);
-
-        WorkoutRequest request =
-                new WorkoutRequest();
-        request.setUserId(1L);
-        request.setExercises(List.of());
-
-        when(workoutService.create(
-                any(overload_api.service.dto.WorkoutRequest.class)))
-                .thenThrow(
-                        new UncategorizedSQLException(
-                                "test",
-                                "test",
-                                new SQLException()));
-
-        ResponseStatusException exception =
-                org.junit.jupiter.api.Assertions.assertThrows(
-                        ResponseStatusException.class,
-                        () -> workoutController.create(request));
-
-        assertEquals(
-                HttpStatus.BAD_REQUEST,
-                exception.getStatusCode());
     }
 
     /**

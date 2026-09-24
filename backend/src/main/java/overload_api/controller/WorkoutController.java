@@ -6,7 +6,6 @@ import java.util.List;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.jdbc.UncategorizedSQLException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -14,14 +13,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 import overload_api.controller.dto.WorkoutExerciseRequest;
 import overload_api.controller.dto.WorkoutHistoryResponse;
 import overload_api.controller.dto.WorkoutHistorySetResponse;
 import overload_api.controller.dto.WorkoutRequest;
 import overload_api.controller.dto.WorkoutSetRequest;
-import overload_api.exception.ResourceNotFoundException;
 import overload_api.model.WorkoutSet;
 import overload_api.service.WorkoutService;
 
@@ -48,28 +45,11 @@ public class WorkoutController {
      *
      * @param request 登録するワークアウト情報
      * @return 登録したワークアウトセット一覧
-     * @throws ResponseStatusException 入力値が不正な場合は400を返す
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public List<WorkoutSet> create(@Valid @RequestBody WorkoutRequest request) {
-        try {
-            return workoutService.create(toServiceRequest(request));
-        } catch (ResourceNotFoundException e) {
-            // Serviceで発生したリソース未存在エラーをAPIの404エラーとして返す。
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    e.getMessage(),
-                    e
-            );
-        } catch (UncategorizedSQLException e) {
-            // データベース登録時の不正な入力をAPIの400エラーとして返す。
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "入力値が不正です",
-                    e
-            );
-        }
+        return workoutService.create(toServiceRequest(request));
     }
 
     /**
@@ -151,19 +131,19 @@ public class WorkoutController {
                         serviceSets = new ArrayList<>();
 
                 if (exerciseRequest.getSets() != null) {
-                	for (WorkoutSetRequest setRequest
-                	        : exerciseRequest.getSets()) {
+                    for (WorkoutSetRequest setRequest
+                            : exerciseRequest.getSets()) {
 
-                	    overload_api.service.dto.WorkoutSetRequest serviceSet =
-                	            new overload_api.service.dto.WorkoutSetRequest();
+                        overload_api.service.dto.WorkoutSetRequest serviceSet =
+                                new overload_api.service.dto.WorkoutSetRequest();
 
-                	    serviceSet.setSetNumber(setRequest.getSetNumber());
-                	    serviceSet.setWeightKg(setRequest.getWeightKg());
-                	    serviceSet.setReps(setRequest.getReps());
-                	    serviceSet.setNote(setRequest.getNote());
+                        serviceSet.setSetNumber(setRequest.getSetNumber());
+                        serviceSet.setWeightKg(setRequest.getWeightKg());
+                        serviceSet.setReps(setRequest.getReps());
+                        serviceSet.setNote(setRequest.getNote());
 
-                	    serviceSets.add(serviceSet);
-                	}
+                        serviceSets.add(serviceSet);
+                    }
                 }
 
                 serviceExercise.setSets(serviceSets);
