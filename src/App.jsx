@@ -1163,15 +1163,16 @@ export default function Overload() {
 
       // ワークアウト保存APIへ送信
       try {
+		// noteは種目単位で扱うため、セットごとには設定しない。
 		const requestBody = {
 		  userId: 1,
 		  exercises: clean.entries.map((entry) => ({
 		    exerciseId: entry.exerciseId,
+		    note: entry.note || "",
 		    sets: entry.sets.map((set, index) => ({
 		      setNumber: index + 1,
 		      weightKg: set.weight,
 		      reps: set.reps,
-		      note: entry.note || "",
 		    })),
 		  })),
 		};
