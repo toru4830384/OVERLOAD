@@ -16,6 +16,7 @@ import overload_api.controller.dto.WorkoutExerciseRequest;
 import overload_api.controller.dto.WorkoutHistoryResponse;
 import overload_api.controller.dto.WorkoutRequest;
 import overload_api.controller.dto.WorkoutSetRequest;
+import overload_api.controller.dto.WorkoutSetResponse;
 import overload_api.model.WorkoutSet;
 import overload_api.service.WorkoutService;
 
@@ -67,7 +68,7 @@ class WorkoutControllerTest {
                 any(overload_api.service.dto.WorkoutRequest.class)))
                 .thenReturn(List.of(workoutSet));
 
-        List<WorkoutSet> result =
+        List<WorkoutSetResponse> result =
                 workoutController.create(request);
 
         assertNotNull(result);

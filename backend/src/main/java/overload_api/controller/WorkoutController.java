@@ -19,6 +19,7 @@ import overload_api.controller.dto.WorkoutHistoryResponse;
 import overload_api.controller.dto.WorkoutHistorySetResponse;
 import overload_api.controller.dto.WorkoutRequest;
 import overload_api.controller.dto.WorkoutSetRequest;
+import overload_api.controller.dto.WorkoutSetResponse;
 import overload_api.model.WorkoutSet;
 import overload_api.service.WorkoutService;
 
@@ -48,8 +49,20 @@ public class WorkoutController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public List<WorkoutSet> create(@Valid @RequestBody WorkoutRequest request) {
-        return workoutService.create(toServiceRequest(request));
+    public List<WorkoutSetResponse> create(
+            @Valid @RequestBody WorkoutRequest request) {
+
+        List<WorkoutSet> workoutSets =
+                workoutService.create(toServiceRequest(request));
+
+        List<WorkoutSetResponse> responses = new ArrayList<>();
+
+        // Persistence ModelをController用レスポンスDTOへ変換する。
+        for (WorkoutSet workoutSet : workoutSets) {
+            responses.add(toResponse(workoutSet));
+        }
+
+        return responses;
     }
 
     /**
@@ -154,5 +167,26 @@ public class WorkoutController {
 
         serviceRequest.setExercises(serviceExercises);
         return serviceRequest;
+    }
+
+    /**
+     * Persistence ModelのWorkoutSetをController用レスポンスDTOに変換する。
+     *
+     * @param workoutSet ワークアウトセット情報
+     * @return ワークアウトセットレスポンス
+     */
+    private WorkoutSetResponse toResponse(WorkoutSet workoutSet) {
+
+        WorkoutSetResponse response = new WorkoutSetResponse();
+
+        response.setId(workoutSet.getId());
+        response.setSessionId(workoutSet.getSessionId());
+        response.setExerciseId(workoutSet.getExerciseId());
+        response.setSetNumber(workoutSet.getSetNumber());
+        response.setWeightKg(workoutSet.getWeightKg());
+        response.setReps(workoutSet.getReps());
+        response.setNote(workoutSet.getNote());
+
+        return response;
     }
 }
