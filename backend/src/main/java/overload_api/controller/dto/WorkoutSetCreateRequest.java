@@ -7,9 +7,19 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
 /**
- * ワークアウト登録時のセット情報を保持するDTO。
+ * 単独のワークアウトセット登録時のリクエスト情報を保持するDTO。
  */
-public class WorkoutSetRequest {
+public class WorkoutSetCreateRequest {
+
+    /**
+     * ワークアウトセッションID。
+     */
+    private Long sessionId;
+
+    /**
+     * 種目ID。
+     */
+    private Long exerciseId;
 
     /**
      * セット番号。
@@ -38,6 +48,42 @@ public class WorkoutSetRequest {
      * セットに関するメモ。
      */
     private String note;
+
+    /**
+     * ワークアウトセッションIDを取得する。
+     *
+     * @return ワークアウトセッションID
+     */
+    public Long getSessionId() {
+        return sessionId;
+    }
+
+    /**
+     * ワークアウトセッションIDを設定する。
+     *
+     * @param sessionId ワークアウトセッションID
+     */
+    public void setSessionId(Long sessionId) {
+        this.sessionId = sessionId;
+    }
+
+    /**
+     * 種目IDを取得する。
+     *
+     * @return 種目ID
+     */
+    public Long getExerciseId() {
+        return exerciseId;
+    }
+
+    /**
+     * 種目IDを設定する。
+     *
+     * @param exerciseId 種目ID
+     */
+    public void setExerciseId(Long exerciseId) {
+        this.exerciseId = exerciseId;
+    }
 
     /**
      * セット番号を取得する。

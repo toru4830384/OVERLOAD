@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import overload_api.controller.dto.WorkoutSetRequest;
+import overload_api.controller.dto.WorkoutSetCreateRequest;
 import overload_api.model.WorkoutSet;
 import overload_api.service.WorkoutSetService;
 
@@ -47,7 +47,7 @@ public class WorkoutSetController {
      * @return 登録したワークアウトセット
      */
     @PostMapping
-    public WorkoutSet create(@RequestBody WorkoutSetRequest request) {
+    public WorkoutSet create(@RequestBody WorkoutSetCreateRequest request) {
         return workoutSetService.create(
                 request.getSessionId(),
                 request.getExerciseId(),

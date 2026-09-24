@@ -151,21 +151,19 @@ public class WorkoutController {
                         serviceSets = new ArrayList<>();
 
                 if (exerciseRequest.getSets() != null) {
-                    for (WorkoutSetRequest setRequest
-                            : exerciseRequest.getSets()) {
+                	for (WorkoutSetRequest setRequest
+                	        : exerciseRequest.getSets()) {
 
-                        overload_api.service.dto.WorkoutSetRequest serviceSet =
-                                new overload_api.service.dto.WorkoutSetRequest();
+                	    overload_api.service.dto.WorkoutSetRequest serviceSet =
+                	            new overload_api.service.dto.WorkoutSetRequest();
 
-                        serviceSet.setSessionId(setRequest.getSessionId());
-                        serviceSet.setExerciseId(setRequest.getExerciseId());
-                        serviceSet.setSetNumber(setRequest.getSetNumber());
-                        serviceSet.setWeightKg(setRequest.getWeightKg());
-                        serviceSet.setReps(setRequest.getReps());
-                        serviceSet.setNote(setRequest.getNote());
+                	    serviceSet.setSetNumber(setRequest.getSetNumber());
+                	    serviceSet.setWeightKg(setRequest.getWeightKg());
+                	    serviceSet.setReps(setRequest.getReps());
+                	    serviceSet.setNote(setRequest.getNote());
 
-                        serviceSets.add(serviceSet);
-                    }
+                	    serviceSets.add(serviceSet);
+                	}
                 }
 
                 serviceExercise.setSets(serviceSets);

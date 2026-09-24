@@ -3,20 +3,26 @@ package overload_api.controller;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import overload_api.controller.dto.WorkoutSetCreateRequest;
 import overload_api.model.WorkoutSet;
 import overload_api.service.WorkoutSetService;
-import overload_api.controller.dto.WorkoutSetRequest;
 
+/**
+ * WorkoutSetControllerの単体テストを行うクラス。
+ */
 class WorkoutSetControllerTest {
 
+    /**
+     * セットが存在する場合に一覧を返すことを確認する。
+     */
     @Test
     void findAll_セットが存在する場合_一覧を返す() {
         WorkoutSetService workoutSetService =
@@ -57,6 +63,9 @@ class WorkoutSetControllerTest {
         assertEquals(8, result.get(1).getReps());
     }
 
+    /**
+     * セットが存在しない場合に空のリストを返すことを確認する。
+     */
     @Test
     void findAll_セットが存在しない場合_空のリストを返す() {
         WorkoutSetService workoutSetService =
@@ -75,13 +84,16 @@ class WorkoutSetControllerTest {
         assertEquals(0, result.size());
     }
 
+    /**
+     * セット情報を指定した場合にセットを作成して返すことを確認する。
+     */
     @Test
     void create_セット情報を指定した場合_セットを作成して返す() {
         WorkoutSetService workoutSetService =
                 mock(WorkoutSetService.class);
 
-        WorkoutSetRequest request =
-                new WorkoutSetRequest();
+        WorkoutSetCreateRequest request =
+                new WorkoutSetCreateRequest();
         request.setSessionId(1L);
         request.setExerciseId(1L);
         request.setSetNumber(1);

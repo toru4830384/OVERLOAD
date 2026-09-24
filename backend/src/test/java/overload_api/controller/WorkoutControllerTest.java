@@ -49,8 +49,6 @@ class WorkoutControllerTest {
 
         WorkoutSetRequest setRequest =
                 new WorkoutSetRequest();
-        setRequest.setSessionId(100L);
-        setRequest.setExerciseId(1L);
         setRequest.setSetNumber(1);
         setRequest.setWeightKg(new BigDecimal("50.00"));
         setRequest.setReps(10);
