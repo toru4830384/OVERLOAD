@@ -44,7 +44,7 @@ public interface WorkoutSessionMapper {
         )
         VALUES (
             #{userId},
-            NOW()
+            #{startedAt}
         )
         """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
