@@ -18,6 +18,11 @@ public class WorkoutExerciseRequest {
     private Long exerciseId;
 
     /**
+     * 種目に関するメモ。
+     */
+    private String note;
+
+    /**
      * 種目に対して実施したセットの一覧。
      *
      * @NotEmptyにより、セット一覧自体がnullまたは空にならないことを検証する。
@@ -46,6 +51,24 @@ public class WorkoutExerciseRequest {
     }
 
     /**
+     * 種目に関するメモを取得する。
+     *
+     * @return 種目に関するメモ
+     */
+    public String getNote() {
+        return note;
+    }
+
+    /**
+     * 種目に関するメモを設定する。
+     *
+     * @param note 種目に関するメモ
+     */
+    public void setNote(String note) {
+        this.note = note;
+    }
+
+    /**
      * セット情報の一覧を取得する。
      *
      * @return セット情報の一覧
@@ -62,5 +85,4 @@ public class WorkoutExerciseRequest {
     public void setSets(List<WorkoutSetRequest> sets) {
         this.sets = sets;
     }
-
 }

@@ -3,19 +3,9 @@ package overload_api.service.dto;
 import java.math.BigDecimal;
 
 /**
- * ワークアウトセット登録時のサービス用リクエスト情報を保持するDTO。
+ * ワークアウト登録時のセット情報を保持するService用DTO。
  */
 public class WorkoutSetRequest {
-
-    /**
-     * ワークアウトセッションID。
-     */
-    private Long sessionId;
-
-    /**
-     * 種目ID。
-     */
-    private Long exerciseId;
 
     /**
      * セット番号。
@@ -31,47 +21,6 @@ public class WorkoutSetRequest {
      * 回数。
      */
     private Integer reps;
-
-    /**
-     * セットに関するメモ。
-     */
-    private String note;
-
-    /**
-     * ワークアウトセッションIDを取得する。
-     *
-     * @return ワークアウトセッションID
-     */
-    public Long getSessionId() {
-        return sessionId;
-    }
-
-    /**
-     * ワークアウトセッションIDを設定する。
-     *
-     * @param sessionId ワークアウトセッションID
-     */
-    public void setSessionId(Long sessionId) {
-        this.sessionId = sessionId;
-    }
-
-    /**
-     * 種目IDを取得する。
-     *
-     * @return 種目ID
-     */
-    public Long getExerciseId() {
-        return exerciseId;
-    }
-
-    /**
-     * 種目IDを設定する。
-     *
-     * @param exerciseId 種目ID
-     */
-    public void setExerciseId(Long exerciseId) {
-        this.exerciseId = exerciseId;
-    }
 
     /**
      * セット番号を取得する。
@@ -92,7 +41,7 @@ public class WorkoutSetRequest {
     }
 
     /**
-     * 重量（kg）を取得する。
+     * 重量を取得する。
      *
      * @return 重量（kg）
      */
@@ -101,7 +50,7 @@ public class WorkoutSetRequest {
     }
 
     /**
-     * 重量（kg）を設定する。
+     * 重量を設定する。
      *
      * @param weightKg 重量（kg）
      */
@@ -125,23 +74,5 @@ public class WorkoutSetRequest {
      */
     public void setReps(Integer reps) {
         this.reps = reps;
-    }
-
-    /**
-     * セットに関するメモを取得する。
-     *
-     * @return メモ
-     */
-    public String getNote() {
-        return note;
-    }
-
-    /**
-     * セットに関するメモを設定する。
-     *
-     * @param note メモ
-     */
-    public void setNote(String note) {
-        this.note = note;
     }
 }

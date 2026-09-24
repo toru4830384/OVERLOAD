@@ -126,6 +126,8 @@ public class WorkoutController {
 
                 serviceExercise.setExerciseId(
                         exerciseRequest.getExerciseId());
+                serviceExercise.setNote(
+                        exerciseRequest.getNote());
 
                 List<overload_api.service.dto.WorkoutSetRequest>
                         serviceSets = new ArrayList<>();
@@ -140,7 +142,6 @@ public class WorkoutController {
                         serviceSet.setSetNumber(setRequest.getSetNumber());
                         serviceSet.setWeightKg(setRequest.getWeightKg());
                         serviceSet.setReps(setRequest.getReps());
-                        serviceSet.setNote(setRequest.getNote());
 
                         serviceSets.add(serviceSet);
                     }

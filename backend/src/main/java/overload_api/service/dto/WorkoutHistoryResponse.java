@@ -29,7 +29,7 @@ public class WorkoutHistoryResponse {
     private String exerciseName;
 
     /**
-     * セットに関するメモ。
+     * 種目に関するメモ。
      */
     private String note;
 
@@ -111,18 +111,18 @@ public class WorkoutHistoryResponse {
     }
 
     /**
-     * セットに関するメモを取得する。
+     * 種目に関するメモを取得する。
      *
-     * @return メモ
+     * @return 種目に関するメモ
      */
     public String getNote() {
         return note;
     }
 
     /**
-     * セットに関するメモを設定する。
+     * 種目に関するメモを設定する。
      *
-     * @param note メモ
+     * @param note 種目に関するメモ
      */
     public void setNote(String note) {
         this.note = note;

@@ -28,7 +28,7 @@ public class WorkoutHistoryResponse {
     private String exerciseName;
 
     /**
-     * ワークアウト時のメモ。
+     * 種目に関するメモ。
      */
     private String note;
 
@@ -110,18 +110,18 @@ public class WorkoutHistoryResponse {
     }
 
     /**
-     * ワークアウト時のメモを取得する。
+     * 種目に関するメモを取得する。
      *
-     * @return ワークアウト時のメモ
+     * @return 種目に関するメモ
      */
     public String getNote() {
         return note;
     }
 
     /**
-     * ワークアウト時のメモを設定する。
+     * 種目に関するメモを設定する。
      *
-     * @param note ワークアウト時のメモ
+     * @param note 種目に関するメモ
      */
     public void setNote(String note) {
         this.note = note;

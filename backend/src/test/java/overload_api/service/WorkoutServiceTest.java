@@ -68,11 +68,11 @@ class WorkoutServiceTest {
         setRequest.setSetNumber(1);
         setRequest.setWeightKg(new BigDecimal("60.00"));
         setRequest.setReps(10);
-        setRequest.setNote("単体テスト");
 
         WorkoutExerciseRequest exerciseRequest =
                 new WorkoutExerciseRequest();
         exerciseRequest.setExerciseId(1L);
+        exerciseRequest.setNote("単体テスト");
         exerciseRequest.setSets(List.of(setRequest));
 
         WorkoutRequest request =
@@ -180,9 +180,10 @@ class WorkoutServiceTest {
 
     /**
      * 複数セットの場合に、すべてのセットを登録して返すことを確認する。
+     * あわせて、種目単位のメモが各セットに設定されることを確認する。
      */
     @Test
-    void create_複数セットの場合_全セットを登録して返す() {
+    void create_複数セットの場合_全セットに種目のメモを設定して登録する() {
         WorkoutSessionMapper workoutSessionMapper =
                 mock(WorkoutSessionMapper.class);
         WorkoutSetMapper workoutSetMapper =
@@ -210,6 +211,7 @@ class WorkoutServiceTest {
 
         org.mockito.Mockito.doAnswer(invocation -> {
             WorkoutSet set = invocation.getArgument(0);
+            set.setId(set.getSetNumber().longValue());
             return null;
         }).when(workoutSetMapper).insert(
                 org.mockito.ArgumentMatchers.any());
@@ -219,18 +221,17 @@ class WorkoutServiceTest {
         set1.setSetNumber(1);
         set1.setWeightKg(new BigDecimal("60.00"));
         set1.setReps(10);
-        set1.setNote("1セット目");
 
         WorkoutSetRequest set2 =
                 new WorkoutSetRequest();
         set2.setSetNumber(2);
         set2.setWeightKg(new BigDecimal("65.00"));
         set2.setReps(8);
-        set2.setNote("2セット目");
 
         WorkoutExerciseRequest exerciseRequest =
                 new WorkoutExerciseRequest();
         exerciseRequest.setExerciseId(1L);
+        exerciseRequest.setNote("複数セットテスト");
         exerciseRequest.setSets(List.of(set1, set2));
 
         WorkoutRequest request =
@@ -251,6 +252,9 @@ class WorkoutServiceTest {
                 new BigDecimal("60.00"),
                 result.get(0).getWeightKg());
         assertEquals(10, result.get(0).getReps());
+        assertEquals(
+                "複数セットテスト",
+                result.get(0).getNote());
 
         assertEquals(101L, result.get(1).getSessionId());
         assertEquals(1L, result.get(1).getExerciseId());
@@ -259,6 +263,9 @@ class WorkoutServiceTest {
                 new BigDecimal("65.00"),
                 result.get(1).getWeightKg());
         assertEquals(8, result.get(1).getReps());
+        assertEquals(
+                "複数セットテスト",
+                result.get(1).getNote());
     }
 
     /**
@@ -325,6 +332,7 @@ class WorkoutServiceTest {
 
     /**
      * 複数セットの場合に、同じ種目のセットをまとめて返すことを確認する。
+     * あわせて、種目単位のメモが履歴に正しく保持されることを確認する。
      */
     @Test
     void findHistoryByUserId_複数セットの場合_同じ種目にまとめて返す() {
@@ -381,6 +389,9 @@ class WorkoutServiceTest {
         assertEquals(
                 "ベンチプレス",
                 history.getExerciseName());
+        assertEquals(
+                "複数セットテスト",
+                history.getNote());
 
         assertEquals(2, history.getSets().size());
 
@@ -469,6 +480,9 @@ class WorkoutServiceTest {
                 "ベンチプレス",
                 benchPressHistory.getExerciseName());
         assertEquals(
+                "複数種目テスト",
+                benchPressHistory.getNote());
+        assertEquals(
                 1,
                 benchPressHistory.getSets().size());
         assertEquals(
@@ -490,6 +504,9 @@ class WorkoutServiceTest {
         assertEquals(
                 "スクワット",
                 squatHistory.getExerciseName());
+        assertEquals(
+                "複数種目テスト",
+                squatHistory.getNote());
         assertEquals(
                 1,
                 squatHistory.getSets().size());

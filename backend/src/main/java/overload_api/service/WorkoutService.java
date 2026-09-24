@@ -80,7 +80,7 @@ public class WorkoutService {
                 workoutSet.setSetNumber(setRequest.getSetNumber());
                 workoutSet.setWeightKg(setRequest.getWeightKg());
                 workoutSet.setReps(setRequest.getReps());
-                workoutSet.setNote(setRequest.getNote());
+                workoutSet.setNote(exerciseRequest.getNote());
                 workoutSetMapper.insert(workoutSet);
                 workoutSets.add(workoutSet);
             }

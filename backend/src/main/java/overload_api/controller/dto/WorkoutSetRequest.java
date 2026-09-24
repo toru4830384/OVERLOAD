@@ -35,11 +35,6 @@ public class WorkoutSetRequest {
     private Integer reps;
 
     /**
-     * セットに関するメモ。
-     */
-    private String note;
-
-    /**
      * セット番号を取得する。
      *
      * @return セット番号
@@ -91,23 +86,5 @@ public class WorkoutSetRequest {
      */
     public void setReps(Integer reps) {
         this.reps = reps;
-    }
-
-    /**
-     * セットに関するメモを取得する。
-     *
-     * @return セットに関するメモ
-     */
-    public String getNote() {
-        return note;
-    }
-
-    /**
-     * セットに関するメモを設定する。
-     *
-     * @param note セットに関するメモ
-     */
-    public void setNote(String note) {
-        this.note = note;
     }
 }

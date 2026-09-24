@@ -3,7 +3,7 @@ package overload_api.service.dto;
 import java.util.List;
 
 /**
- * ワークアウトで実施する種目のサービス用リクエスト情報を保持するDTO。
+ * ワークアウトで実施する種目のService用リクエスト情報を保持するDTO。
  */
 public class WorkoutExerciseRequest {
 
@@ -11,6 +11,11 @@ public class WorkoutExerciseRequest {
      * 種目のID。
      */
     private Long exerciseId;
+
+    /**
+     * 種目に関するメモ。
+     */
+    private String note;
 
     /**
      * 種目に対して実施したセットの一覧。
@@ -33,6 +38,24 @@ public class WorkoutExerciseRequest {
      */
     public void setExerciseId(Long exerciseId) {
         this.exerciseId = exerciseId;
+    }
+
+    /**
+     * 種目に関するメモを取得する。
+     *
+     * @return 種目に関するメモ
+     */
+    public String getNote() {
+        return note;
+    }
+
+    /**
+     * 種目に関するメモを設定する。
+     *
+     * @param note 種目に関するメモ
+     */
+    public void setNote(String note) {
+        this.note = note;
     }
 
     /**
