@@ -4,41 +4,48 @@ import java.math.BigDecimal;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 
 /**
  * ワークアウトセット登録時のリクエスト情報を保持するDTO。
  */
 public class WorkoutSetRequest {
 
-    /** 
-     * ワークアウトセッションID。 
+    /**
+     * ワークアウトセッションID。
      */
     private Long sessionId;
 
-    /** 
-     * 種目ID。 
+    /**
+     * 種目ID。
      */
     private Long exerciseId;
 
-    /** 
-     * セット番号。 
+    /**
+     * セット番号。
      */
     private Integer setNumber;
 
-    /** 
-     * 重量（kg）。 
+    /**
+     * 重量（kg）。
+     *
+     * @NotNullにより、重量が未入力でないことを検証する。
+     * @DecimalMinにより、重量が0.01kg以上であることを検証する。
      */
-    @DecimalMin(value = "0.01", message = "重量は0より大きい値を入力してください")
+    @NotNull
+    @DecimalMin(
+            value = "0.01",
+            message = "重量は0より大きい値を入力してください")
     private BigDecimal weightKg;
 
-    /** 
+    /**
      * 回数。
      */
     @Min(value = 1, message = "回数は0より大きい値を入力してください")
     private Integer reps;
 
-    /** 
-     * セットに関するメモ。 
+    /**
+     * セットに関するメモ。
      */
     private String note;
 
