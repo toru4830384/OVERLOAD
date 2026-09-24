@@ -32,34 +32,4 @@ public class WorkoutSetService {
     public List<WorkoutSet> findAll() {
         return workoutSetMapper.findAll();
     }
-
-    /**
-     * ワークアウトセットを新規作成する。
-     *
-     * @param sessionId ワークアウトセッションID
-     * @param exerciseId 種目ID
-     * @param setNumber セット番号
-     * @param weightKg 重量（kg）
-     * @param reps 回数
-     * @param note メモ
-     * @return 作成したワークアウトセット
-     */
-    public WorkoutSet create(
-            Long sessionId,
-            Long exerciseId,
-            Integer setNumber,
-            java.math.BigDecimal weightKg,
-            Integer reps,
-            String note) {
-        WorkoutSet workoutSet = new WorkoutSet();
-        workoutSet.setSessionId(sessionId);
-        workoutSet.setExerciseId(exerciseId);
-        workoutSet.setSetNumber(setNumber);
-        workoutSet.setWeightKg(weightKg);
-        workoutSet.setReps(reps);
-        workoutSet.setNote(note);
-        workoutSetMapper.insert(workoutSet);
-        return workoutSet;
-    }
-
 }

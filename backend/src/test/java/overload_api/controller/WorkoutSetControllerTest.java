@@ -3,7 +3,6 @@ package overload_api.controller;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -11,7 +10,6 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import overload_api.controller.dto.WorkoutSetCreateRequest;
 import overload_api.model.WorkoutSet;
 import overload_api.service.WorkoutSetService;
 
@@ -82,66 +80,5 @@ class WorkoutSetControllerTest {
 
         assertNotNull(result);
         assertEquals(0, result.size());
-    }
-
-    /**
-     * セット情報を指定した場合にセットを作成して返すことを確認する。
-     */
-    @Test
-    void create_セット情報を指定した場合_セットを作成して返す() {
-        WorkoutSetService workoutSetService =
-                mock(WorkoutSetService.class);
-
-        WorkoutSetCreateRequest request =
-                new WorkoutSetCreateRequest();
-        request.setSessionId(1L);
-        request.setExerciseId(1L);
-        request.setSetNumber(1);
-        request.setWeightKg(new BigDecimal("50.00"));
-        request.setReps(10);
-        request.setNote("テスト");
-
-        WorkoutSet workoutSet = new WorkoutSet();
-        workoutSet.setId(1L);
-        workoutSet.setSessionId(1L);
-        workoutSet.setExerciseId(1L);
-        workoutSet.setSetNumber(1);
-        workoutSet.setWeightKg(new BigDecimal("50.00"));
-        workoutSet.setReps(10);
-
-        when(workoutSetService.create(
-                1L,
-                1L,
-                1,
-                new BigDecimal("50.00"),
-                10,
-                "テスト"
-        )).thenReturn(workoutSet);
-
-        WorkoutSetController workoutSetController =
-                new WorkoutSetController(workoutSetService);
-
-        WorkoutSet result =
-                workoutSetController.create(request);
-
-        assertNotNull(result);
-        assertEquals(1L, result.getId());
-        assertEquals(1L, result.getSessionId());
-        assertEquals(1L, result.getExerciseId());
-        assertEquals(1, result.getSetNumber());
-        assertEquals(
-                new BigDecimal("50.00"),
-                result.getWeightKg()
-        );
-        assertEquals(10, result.getReps());
-
-        verify(workoutSetService).create(
-                1L,
-                1L,
-                1,
-                new BigDecimal("50.00"),
-                10,
-                "テスト"
-        );
     }
 }

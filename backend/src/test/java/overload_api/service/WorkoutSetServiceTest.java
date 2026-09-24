@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.verify;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -14,8 +13,14 @@ import org.junit.jupiter.api.Test;
 import overload_api.mapper.WorkoutSetMapper;
 import overload_api.model.WorkoutSet;
 
+/**
+ * WorkoutSetServiceの単体テストを行うクラス。
+ */
 class WorkoutSetServiceTest {
 
+    /**
+     * セットが存在する場合に一覧を返すことを確認する。
+     */
     @Test
     void findAll_セットが存在する場合_一覧を返す() {
         WorkoutSetMapper workoutSetMapper =
@@ -52,17 +57,26 @@ class WorkoutSetServiceTest {
         assertEquals(10L, result.get(0).getSessionId());
         assertEquals(1L, result.get(0).getExerciseId());
         assertEquals(1, result.get(0).getSetNumber());
-        assertEquals(new BigDecimal("50.00"), result.get(0).getWeightKg());
+        assertEquals(
+                new BigDecimal("50.00"),
+                result.get(0).getWeightKg()
+        );
         assertEquals(10, result.get(0).getReps());
 
         assertEquals(2L, result.get(1).getId());
         assertEquals(10L, result.get(1).getSessionId());
         assertEquals(1L, result.get(1).getExerciseId());
         assertEquals(2, result.get(1).getSetNumber());
-        assertEquals(new BigDecimal("60.00"), result.get(1).getWeightKg());
+        assertEquals(
+                new BigDecimal("60.00"),
+                result.get(1).getWeightKg()
+        );
         assertEquals(8, result.get(1).getReps());
     }
 
+    /**
+     * セットが存在しない場合に空のリストを返すことを確認する。
+     */
     @Test
     void findAll_セットが存在しない場合_空のリストを返す() {
         WorkoutSetMapper workoutSetMapper =
@@ -79,35 +93,5 @@ class WorkoutSetServiceTest {
 
         assertNotNull(result);
         assertEquals(0, result.size());
-    }
-
-    @Test
-    void create_セット情報を指定した場合_セットを作成して返す() {
-        WorkoutSetMapper workoutSetMapper =
-                mock(WorkoutSetMapper.class);
-
-        WorkoutSetService workoutSetService =
-                new WorkoutSetService(workoutSetMapper);
-
-        BigDecimal weightKg = new BigDecimal("50.00");
-        String note = "テスト";
-
-        WorkoutSet result =
-                workoutSetService.create(
-                        10L,
-                        1L,
-                        1,
-                        weightKg,
-                        10,
-                        note);
-
-        assertNotNull(result);
-        assertEquals(10L, result.getSessionId());
-        assertEquals(1L, result.getExerciseId());
-        assertEquals(1, result.getSetNumber());
-        assertEquals(weightKg, result.getWeightKg());
-        assertEquals(10, result.getReps());
-        assertEquals(note, result.getNote());
-        verify(workoutSetMapper).insert(result);
     }
 }

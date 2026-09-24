@@ -2,15 +2,10 @@ package overload_api.controller;
 
 import java.util.List;
 
-import jakarta.validation.Valid;
-
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import overload_api.controller.dto.WorkoutSetCreateRequest;
 import overload_api.model.WorkoutSet;
 import overload_api.service.WorkoutSetService;
 
@@ -40,23 +35,5 @@ public class WorkoutSetController {
     @GetMapping
     public List<WorkoutSet> findAll() {
         return workoutSetService.findAll();
-    }
-
-    /**
-     * ワークアウトセットを登録する。
-     *
-     * @param request 登録するワークアウトセット情報
-     * @return 登録したワークアウトセット
-     */
-    @PostMapping
-    public WorkoutSet create(@Valid @RequestBody WorkoutSetCreateRequest request) {
-        return workoutSetService.create(
-                request.getSessionId(),
-                request.getExerciseId(),
-                request.getSetNumber(),
-                request.getWeightKg(),
-                request.getReps(),
-                request.getNote()
-        );
     }
 }
