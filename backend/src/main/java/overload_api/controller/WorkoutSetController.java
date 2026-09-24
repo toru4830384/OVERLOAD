@@ -2,6 +2,8 @@ package overload_api.controller;
 
 import java.util.List;
 
+import jakarta.validation.Valid;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -47,7 +49,7 @@ public class WorkoutSetController {
      * @return 登録したワークアウトセット
      */
     @PostMapping
-    public WorkoutSet create(@RequestBody WorkoutSetCreateRequest request) {
+    public WorkoutSet create(@Valid @RequestBody WorkoutSetCreateRequest request) {
         return workoutSetService.create(
                 request.getSessionId(),
                 request.getExerciseId(),
