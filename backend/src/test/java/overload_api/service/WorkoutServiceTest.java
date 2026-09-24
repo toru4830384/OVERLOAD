@@ -10,19 +10,25 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import overload_api.controller.dto.WorkoutExerciseRequest;
-import overload_api.controller.dto.WorkoutRequest;
-import overload_api.controller.dto.WorkoutSetRequest;
-import overload_api.controller.dto.WorkoutHistoryResponse;
-import overload_api.controller.dto.WorkoutHistoryRow;
 import overload_api.mapper.UserMapper;
 import overload_api.mapper.WorkoutSessionMapper;
 import overload_api.mapper.WorkoutSetMapper;
+import overload_api.mapper.dto.WorkoutHistoryRow;
 import overload_api.model.User;
 import overload_api.model.WorkoutSet;
+import overload_api.service.dto.WorkoutExerciseRequest;
+import overload_api.service.dto.WorkoutHistoryResponse;
+import overload_api.service.dto.WorkoutRequest;
+import overload_api.service.dto.WorkoutSetRequest;
 
+/**
+ * WorkoutServiceのテストクラス。
+ */
 class WorkoutServiceTest {
 
+    /**
+     * ワークアウトを正常に登録し、登録したセット一覧を返すことを確認する。
+     */
     @Test
     void create_正常系_ワークアウトを登録してセットを返す() {
         WorkoutSessionMapper workoutSessionMapper =
@@ -56,7 +62,8 @@ class WorkoutServiceTest {
         }).when(workoutSetMapper).insert(
                 org.mockito.ArgumentMatchers.any());
 
-        WorkoutSetRequest setRequest = new WorkoutSetRequest();
+        WorkoutSetRequest setRequest =
+                new WorkoutSetRequest();
         setRequest.setSetNumber(1);
         setRequest.setWeightKg(new BigDecimal("60.00"));
         setRequest.setReps(10);
@@ -67,7 +74,8 @@ class WorkoutServiceTest {
         exerciseRequest.setExerciseId(1L);
         exerciseRequest.setSets(List.of(setRequest));
 
-        WorkoutRequest request = new WorkoutRequest();
+        WorkoutRequest request =
+                new WorkoutRequest();
         request.setUserId(1L);
         request.setExercises(List.of(exerciseRequest));
 
@@ -85,7 +93,10 @@ class WorkoutServiceTest {
         assertEquals(10, result.get(0).getReps());
         assertEquals("単体テスト", result.get(0).getNote());
     }
-    
+
+    /**
+     * セット情報がnullの場合に、セット登録をスキップして空のリストを返すことを確認する。
+     */
     @Test
     void create_セットがnullの場合_セット登録をスキップして空のリストを返す() {
         WorkoutSessionMapper workoutSessionMapper =
@@ -118,7 +129,8 @@ class WorkoutServiceTest {
         exerciseRequest.setExerciseId(1L);
         exerciseRequest.setSets(null);
 
-        WorkoutRequest request = new WorkoutRequest();
+        WorkoutRequest request =
+                new WorkoutRequest();
         request.setUserId(1L);
         request.setExercises(List.of(exerciseRequest));
 
@@ -128,7 +140,10 @@ class WorkoutServiceTest {
         assertNotNull(result);
         assertEquals(0, result.size());
     }
-    
+
+    /**
+     * 存在しないユーザーの場合に404エラーを返すことを確認する。
+     */
     @Test
     void create_存在しないユーザーの場合_404例外を返す() {
         WorkoutSessionMapper workoutSessionMapper =
@@ -144,7 +159,8 @@ class WorkoutServiceTest {
                         workoutSetMapper,
                         userMapper);
 
-        WorkoutRequest request = new WorkoutRequest();
+        WorkoutRequest request =
+                new WorkoutRequest();
         request.setUserId(9999L);
 
         when(userMapper.findById(9999L)).thenReturn(null);
@@ -159,6 +175,9 @@ class WorkoutServiceTest {
                 exception.getStatusCode());
     }
 
+    /**
+     * 複数セットの場合に、すべてのセットを登録して返すことを確認する。
+     */
     @Test
     void create_複数セットの場合_全セットを登録して返す() {
         WorkoutSessionMapper workoutSessionMapper =
@@ -192,13 +211,15 @@ class WorkoutServiceTest {
         }).when(workoutSetMapper).insert(
                 org.mockito.ArgumentMatchers.any());
 
-        WorkoutSetRequest set1 = new WorkoutSetRequest();
+        WorkoutSetRequest set1 =
+                new WorkoutSetRequest();
         set1.setSetNumber(1);
         set1.setWeightKg(new BigDecimal("60.00"));
         set1.setReps(10);
         set1.setNote("1セット目");
 
-        WorkoutSetRequest set2 = new WorkoutSetRequest();
+        WorkoutSetRequest set2 =
+                new WorkoutSetRequest();
         set2.setSetNumber(2);
         set2.setWeightKg(new BigDecimal("65.00"));
         set2.setReps(8);
@@ -209,7 +230,8 @@ class WorkoutServiceTest {
         exerciseRequest.setExerciseId(1L);
         exerciseRequest.setSets(List.of(set1, set2));
 
-        WorkoutRequest request = new WorkoutRequest();
+        WorkoutRequest request =
+                new WorkoutRequest();
         request.setUserId(1L);
         request.setExercises(List.of(exerciseRequest));
 
@@ -236,6 +258,9 @@ class WorkoutServiceTest {
         assertEquals(8, result.get(1).getReps());
     }
 
+    /**
+     * 履歴が存在する場合に、正しく履歴を返すことを確認する。
+     */
     @Test
     void findHistoryByUserId_履歴がある場合_正しく履歴を返す() {
         WorkoutSessionMapper workoutSessionMapper =
@@ -251,7 +276,8 @@ class WorkoutServiceTest {
                         workoutSetMapper,
                         userMapper);
 
-        WorkoutHistoryRow row = new WorkoutHistoryRow();
+        WorkoutHistoryRow row =
+                new WorkoutHistoryRow();
         row.setSessionId(100L);
         row.setStartedAt(
                 java.time.LocalDateTime.of(2026, 9, 8, 10, 0));
@@ -275,17 +301,28 @@ class WorkoutServiceTest {
 
         assertEquals(100L, history.getSessionId());
         assertEquals(1L, history.getExerciseId());
-        assertEquals("ベンチプレス", history.getExerciseName());
-        assertEquals("単体テスト", history.getNote());
+        assertEquals(
+                "ベンチプレス",
+                history.getExerciseName());
+        assertEquals(
+                "単体テスト",
+                history.getNote());
 
         assertEquals(1, history.getSets().size());
-        assertEquals(1, history.getSets().get(0).getSetNumber());
+        assertEquals(
+                1,
+                history.getSets().get(0).getSetNumber());
         assertEquals(
                 new BigDecimal("60.00"),
                 history.getSets().get(0).getWeightKg());
-        assertEquals(10, history.getSets().get(0).getReps());
+        assertEquals(
+                10,
+                history.getSets().get(0).getReps());
     }
 
+    /**
+     * 複数セットの場合に、同じ種目のセットをまとめて返すことを確認する。
+     */
     @Test
     void findHistoryByUserId_複数セットの場合_同じ種目にまとめて返す() {
         WorkoutSessionMapper workoutSessionMapper =
@@ -301,7 +338,8 @@ class WorkoutServiceTest {
                         workoutSetMapper,
                         userMapper);
 
-        WorkoutHistoryRow row1 = new WorkoutHistoryRow();
+        WorkoutHistoryRow row1 =
+                new WorkoutHistoryRow();
         row1.setSessionId(100L);
         row1.setStartedAt(
                 java.time.LocalDateTime.of(2026, 9, 8, 10, 0));
@@ -312,7 +350,8 @@ class WorkoutServiceTest {
         row1.setReps(10);
         row1.setNote("複数セットテスト");
 
-        WorkoutHistoryRow row2 = new WorkoutHistoryRow();
+        WorkoutHistoryRow row2 =
+                new WorkoutHistoryRow();
         row2.setSessionId(100L);
         row2.setStartedAt(
                 java.time.LocalDateTime.of(2026, 9, 8, 10, 0));
@@ -336,23 +375,36 @@ class WorkoutServiceTest {
 
         assertEquals(100L, history.getSessionId());
         assertEquals(1L, history.getExerciseId());
-        assertEquals("ベンチプレス", history.getExerciseName());
+        assertEquals(
+                "ベンチプレス",
+                history.getExerciseName());
 
         assertEquals(2, history.getSets().size());
 
-        assertEquals(1, history.getSets().get(0).getSetNumber());
+        assertEquals(
+                1,
+                history.getSets().get(0).getSetNumber());
         assertEquals(
                 new BigDecimal("60.00"),
                 history.getSets().get(0).getWeightKg());
-        assertEquals(10, history.getSets().get(0).getReps());
+        assertEquals(
+                10,
+                history.getSets().get(0).getReps());
 
-        assertEquals(2, history.getSets().get(1).getSetNumber());
+        assertEquals(
+                2,
+                history.getSets().get(1).getSetNumber());
         assertEquals(
                 new BigDecimal("65.00"),
                 history.getSets().get(1).getWeightKg());
-        assertEquals(8, history.getSets().get(1).getReps());
+        assertEquals(
+                8,
+                history.getSets().get(1).getReps());
     }
 
+    /**
+     * 複数種目の場合に、種目ごとに履歴を分けて返すことを確認する。
+     */
     @Test
     void findHistoryByUserId_複数種目の場合_種目ごとに分けて返す() {
         WorkoutSessionMapper workoutSessionMapper =
@@ -368,7 +420,8 @@ class WorkoutServiceTest {
                         workoutSetMapper,
                         userMapper);
 
-        WorkoutHistoryRow benchPress = new WorkoutHistoryRow();
+        WorkoutHistoryRow benchPress =
+                new WorkoutHistoryRow();
         benchPress.setSessionId(100L);
         benchPress.setStartedAt(
                 java.time.LocalDateTime.of(2026, 9, 8, 10, 0));
@@ -379,7 +432,8 @@ class WorkoutServiceTest {
         benchPress.setReps(10);
         benchPress.setNote("複数種目テスト");
 
-        WorkoutHistoryRow squat = new WorkoutHistoryRow();
+        WorkoutHistoryRow squat =
+                new WorkoutHistoryRow();
         squat.setSessionId(100L);
         squat.setStartedAt(
                 java.time.LocalDateTime.of(2026, 9, 8, 10, 0));
@@ -399,29 +453,54 @@ class WorkoutServiceTest {
         assertNotNull(result);
         assertEquals(2, result.size());
 
-        WorkoutHistoryResponse benchPressHistory = result.get(0);
-        assertEquals(100L, benchPressHistory.getSessionId());
-        assertEquals(1L, benchPressHistory.getExerciseId());
-        assertEquals("ベンチプレス",
+        WorkoutHistoryResponse benchPressHistory =
+                result.get(0);
+
+        assertEquals(
+                100L,
+                benchPressHistory.getSessionId());
+        assertEquals(
+                1L,
+                benchPressHistory.getExerciseId());
+        assertEquals(
+                "ベンチプレス",
                 benchPressHistory.getExerciseName());
-        assertEquals(1, benchPressHistory.getSets().size());
-        assertEquals(new BigDecimal("60.00"),
+        assertEquals(
+                1,
+                benchPressHistory.getSets().size());
+        assertEquals(
+                new BigDecimal("60.00"),
                 benchPressHistory.getSets().get(0).getWeightKg());
-        assertEquals(10,
+        assertEquals(
+                10,
                 benchPressHistory.getSets().get(0).getReps());
 
-        WorkoutHistoryResponse squatHistory = result.get(1);
-        assertEquals(100L, squatHistory.getSessionId());
-        assertEquals(2L, squatHistory.getExerciseId());
-        assertEquals("スクワット",
+        WorkoutHistoryResponse squatHistory =
+                result.get(1);
+
+        assertEquals(
+                100L,
+                squatHistory.getSessionId());
+        assertEquals(
+                2L,
+                squatHistory.getExerciseId());
+        assertEquals(
+                "スクワット",
                 squatHistory.getExerciseName());
-        assertEquals(1, squatHistory.getSets().size());
-        assertEquals(new BigDecimal("80.00"),
+        assertEquals(
+                1,
+                squatHistory.getSets().size());
+        assertEquals(
+                new BigDecimal("80.00"),
                 squatHistory.getSets().get(0).getWeightKg());
-        assertEquals(8,
+        assertEquals(
+                8,
                 squatHistory.getSets().get(0).getReps());
     }
 
+    /**
+     * 履歴が存在しない場合に、空のリストを返すことを確認する。
+     */
     @Test
     void findHistoryByUserId_履歴がない場合_空のリストを返す() {
         WorkoutSessionMapper workoutSessionMapper =

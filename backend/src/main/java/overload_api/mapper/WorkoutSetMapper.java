@@ -7,7 +7,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Select;
 
-import overload_api.controller.dto.WorkoutHistoryRow;
+import overload_api.mapper.dto.WorkoutHistoryRow;
 import overload_api.model.WorkoutSet;
 
 /**

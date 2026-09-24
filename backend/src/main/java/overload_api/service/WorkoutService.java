@@ -10,17 +10,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import overload_api.controller.dto.WorkoutExerciseRequest;
-import overload_api.controller.dto.WorkoutHistoryResponse;
-import overload_api.controller.dto.WorkoutHistoryRow;
-import overload_api.controller.dto.WorkoutHistorySetResponse;
-import overload_api.controller.dto.WorkoutRequest;
-import overload_api.controller.dto.WorkoutSetRequest;
 import overload_api.mapper.UserMapper;
 import overload_api.mapper.WorkoutSessionMapper;
 import overload_api.mapper.WorkoutSetMapper;
+import overload_api.mapper.dto.WorkoutHistoryRow;
 import overload_api.model.WorkoutSession;
 import overload_api.model.WorkoutSet;
+import overload_api.service.dto.WorkoutExerciseRequest;
+import overload_api.service.dto.WorkoutHistoryResponse;
+import overload_api.service.dto.WorkoutHistorySetResponse;
+import overload_api.service.dto.WorkoutRequest;
+import overload_api.service.dto.WorkoutSetRequest;
 
 /**
  * ワークアウトに関する業務処理を提供するサービス。

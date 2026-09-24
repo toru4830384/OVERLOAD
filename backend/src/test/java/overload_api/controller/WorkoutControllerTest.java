@@ -2,25 +2,35 @@ package overload_api.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.List;
 
-import java.sql.SQLException;
-
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.UncategorizedSQLException;
+import org.springframework.web.server.ResponseStatusException;
 
 import overload_api.controller.dto.WorkoutExerciseRequest;
+import overload_api.controller.dto.WorkoutHistoryResponse;
 import overload_api.controller.dto.WorkoutRequest;
 import overload_api.controller.dto.WorkoutSetRequest;
-import overload_api.controller.dto.WorkoutHistoryResponse;
 import overload_api.model.WorkoutSet;
 import overload_api.service.WorkoutService;
 
+/**
+ * WorkoutControllerのテストクラス。
+ */
 class WorkoutControllerTest {
 
+    /**
+     * ワークアウトを正常に登録し、登録したセット一覧を返すことを確認する。
+     */
     @Test
     void create_正常系_ワークアウトを登録してセットを返す() {
         WorkoutService workoutService =
@@ -55,7 +65,12 @@ class WorkoutControllerTest {
         request.setUserId(1L);
         request.setExercises(List.of(exerciseRequest));
 
-        when(workoutService.create(request))
+        /*
+         * Controller内でController用DTOからService用DTOへ変換されるため、
+         * Service用DTOを指定してモックの戻り値を設定する。
+         */
+        when(workoutService.create(
+                any(overload_api.service.dto.WorkoutRequest.class)))
                 .thenReturn(List.of(workoutSet));
 
         List<WorkoutSet> result =
@@ -72,7 +87,10 @@ class WorkoutControllerTest {
                 result.get(0).getWeightKg());
         assertEquals(10, result.get(0).getReps());
     }
-    
+
+    /**
+     * ServiceでSQLエラーが発生した場合に、Controllerが400エラーへ変換することを確認する。
+     */
     @Test
     void create_SQLエラーが発生した場合_400例外を返す() {
         WorkoutService workoutService =
@@ -86,23 +104,27 @@ class WorkoutControllerTest {
         request.setUserId(1L);
         request.setExercises(List.of());
 
-        org.mockito.Mockito.when(workoutService.create(request))
+        when(workoutService.create(
+                any(overload_api.service.dto.WorkoutRequest.class)))
                 .thenThrow(
-                        new org.springframework.jdbc.UncategorizedSQLException(
+                        new UncategorizedSQLException(
                                 "test",
                                 "test",
                                 new SQLException()));
 
-        org.springframework.web.server.ResponseStatusException exception =
+        ResponseStatusException exception =
                 org.junit.jupiter.api.Assertions.assertThrows(
-                        org.springframework.web.server.ResponseStatusException.class,
+                        ResponseStatusException.class,
                         () -> workoutController.create(request));
 
         assertEquals(
-                org.springframework.http.HttpStatus.BAD_REQUEST,
+                HttpStatus.BAD_REQUEST,
                 exception.getStatusCode());
     }
-    
+
+    /**
+     * ワークアウト履歴が存在する場合に、履歴一覧をController用DTOへ変換して返すことを確認する。
+     */
     @Test
     void findHistory_履歴が存在する場合_履歴一覧を返す() {
         WorkoutService workoutService =
@@ -111,17 +133,17 @@ class WorkoutControllerTest {
         WorkoutController workoutController =
                 new WorkoutController(workoutService);
 
-        overload_api.controller.dto.WorkoutHistorySetResponse set =
-                new overload_api.controller.dto.WorkoutHistorySetResponse();
+        overload_api.service.dto.WorkoutHistorySetResponse set =
+                new overload_api.service.dto.WorkoutHistorySetResponse();
         set.setSetNumber(1);
         set.setWeightKg(new BigDecimal("50.00"));
         set.setReps(10);
 
-        overload_api.controller.dto.WorkoutHistoryResponse history =
-                new overload_api.controller.dto.WorkoutHistoryResponse();
+        overload_api.service.dto.WorkoutHistoryResponse history =
+                new overload_api.service.dto.WorkoutHistoryResponse();
         history.setSessionId(100L);
         history.setStartedAt(
-                java.time.LocalDateTime.of(2026, 9, 9, 10, 0));
+                LocalDateTime.of(2026, 9, 9, 10, 0));
         history.setExerciseId(1L);
         history.setExerciseName("ベンチプレス");
         history.setNote("単体テスト");
@@ -138,7 +160,7 @@ class WorkoutControllerTest {
 
         assertEquals(100L, result.get(0).getSessionId());
         assertEquals(
-                java.time.LocalDateTime.of(2026, 9, 9, 10, 0),
+                LocalDateTime.of(2026, 9, 9, 10, 0),
                 result.get(0).getStartedAt());
         assertEquals(1L, result.get(0).getExerciseId());
         assertEquals(
@@ -160,7 +182,10 @@ class WorkoutControllerTest {
                 10,
                 result.get(0).getSets().get(0).getReps());
     }
-    
+
+    /**
+     * ワークアウト履歴が存在しない場合に、空のリストを返すことを確認する。
+     */
     @Test
     void findHistory_履歴が存在しない場合_空のリストを返す() {
         WorkoutService workoutService =
