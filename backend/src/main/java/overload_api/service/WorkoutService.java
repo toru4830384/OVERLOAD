@@ -61,6 +61,14 @@ public class WorkoutService {
             throw new ResourceNotFoundException("User not found");
         }
 
+        for (WorkoutExerciseRequest exerciseRequest : request.getExercises()) {
+            if (exerciseRequest.getSets() == null
+                    || exerciseRequest.getSets().isEmpty()) {
+                throw new IllegalArgumentException(
+                        "Workout sets must not be null or empty");
+            }
+        }
+
         WorkoutSession workoutSession = new WorkoutSession();
         workoutSession.setUserId(request.getUserId());
         workoutSession.setStartedAt(LocalDateTime.now());
