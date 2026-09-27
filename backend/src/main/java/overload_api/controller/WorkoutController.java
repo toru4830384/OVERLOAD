@@ -182,6 +182,7 @@ public class WorkoutController {
         response.setId(workoutSet.getId());
         response.setSessionId(workoutSet.getSessionId());
         response.setExerciseId(workoutSet.getExerciseId());
+        response.setExerciseOrder(workoutSet.getExerciseOrder());
         response.setSetNumber(workoutSet.getSetNumber());
         response.setWeightKg(workoutSet.getWeightKg());
         response.setReps(workoutSet.getReps());

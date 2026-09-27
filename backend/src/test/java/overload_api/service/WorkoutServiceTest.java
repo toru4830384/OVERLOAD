@@ -2,19 +2,24 @@ package overload_api.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyLong;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import overload_api.exception.ResourceNotFoundException;
+import overload_api.mapper.ExerciseMapper;
 import overload_api.mapper.UserMapper;
 import overload_api.mapper.WorkoutSessionMapper;
 import overload_api.mapper.WorkoutSetMapper;
@@ -33,11 +38,11 @@ import overload_api.service.dto.WorkoutSetRequest;
 class WorkoutServiceTest {
 
     /**
-     * ワークアウトを正常に登録し、登録したセット一覧を返すことを確認する。
+     * ワークアウトを正常に登録し、
+     * 登録したセット一覧を返すことを確認する。
      */
     @Test
-    void create_正常系_ワークアウトを登録してセットを返す() {
-
+    void createReturnsRegisteredSetsForValidRequest() {
         WorkoutSessionMapper workoutSessionMapper =
                 mock(WorkoutSessionMapper.class);
 
@@ -47,58 +52,54 @@ class WorkoutServiceTest {
         UserMapper userMapper =
                 mock(UserMapper.class);
 
+        ExerciseMapper exerciseMapper =
+                mock(ExerciseMapper.class);
+
         WorkoutService workoutService =
                 new WorkoutService(
                         workoutSessionMapper,
                         workoutSetMapper,
-                        userMapper);
+                        userMapper,
+                        exerciseMapper);
 
         User user = new User();
         user.setId(1L);
 
-        when(userMapper.findById(1L)).thenReturn(user);
+        when(userMapper.findById(1L))
+                .thenReturn(user);
+
+        when(exerciseMapper.findById(1L))
+                .thenReturn(mock(overload_api.model.Exercise.class));
 
         org.mockito.Mockito.doAnswer(invocation -> {
-
             WorkoutSession session =
                     invocation.getArgument(0);
-
             session.setId(100L);
-
             return null;
-
         }).when(workoutSessionMapper).insert(
-                org.mockito.ArgumentMatchers.any());
+                any(WorkoutSession.class));
 
         org.mockito.Mockito.doAnswer(invocation -> {
-
             WorkoutSet set =
                     invocation.getArgument(0);
-
             set.setId(1L);
-
             return null;
-
         }).when(workoutSetMapper).insert(
-                org.mockito.ArgumentMatchers.any());
+                any(WorkoutSet.class));
 
         WorkoutSetRequest setRequest =
                 new WorkoutSetRequest();
 
         setRequest.setSetNumber(1);
-
         setRequest.setWeightKg(
                 new BigDecimal("60.00"));
-
         setRequest.setReps(10);
 
         WorkoutExerciseRequest exerciseRequest =
                 new WorkoutExerciseRequest();
 
         exerciseRequest.setExerciseId(1L);
-
         exerciseRequest.setNote("単体テスト");
-
         exerciseRequest.setSets(
                 List.of(setRequest));
 
@@ -106,7 +107,6 @@ class WorkoutServiceTest {
                 new WorkoutRequest();
 
         request.setUserId(1L);
-
         request.setExercises(
                 List.of(exerciseRequest));
 
@@ -114,7 +114,6 @@ class WorkoutServiceTest {
                 workoutService.create(request);
 
         assertNotNull(result);
-
         assertEquals(1, result.size());
 
         assertEquals(
@@ -141,22 +140,39 @@ class WorkoutServiceTest {
                 "単体テスト",
                 result.get(0).getNote());
 
+        ArgumentCaptor<WorkoutSession> sessionCaptor =
+                ArgumentCaptor.forClass(
+                        WorkoutSession.class);
+
         verify(workoutSessionMapper, times(1))
-                .insert(any(WorkoutSession.class));
+                .insert(sessionCaptor.capture());
+
+        WorkoutSession insertedSession =
+                sessionCaptor.getValue();
+
+        assertEquals(
+                1L,
+                insertedSession.getUserId());
+
+        assertNotNull(
+                insertedSession.getStartedAt());
+
+        verify(exerciseMapper, times(1))
+                .findById(1L);
 
         verify(workoutSetMapper, times(1))
                 .insert(any(WorkoutSet.class));
 
         verify(workoutSessionMapper, times(1))
-                .updateFinishedAt(anyLong());
+                .updateFinishedAt(100L);
     }
 
     /**
-     * セット情報がnullの場合に、セット登録をスキップして空のリストを返すことを確認する。
+     * セット情報がnullの場合に例外が発生し、
+     * 登録処理が実行されないことを確認する。
      */
     @Test
-    void create_セットがnullの場合_セット登録をスキップして空のリストを返す() {
-
+    void createThrowsExceptionWhenSetsAreNull() {
         WorkoutSessionMapper workoutSessionMapper =
                 mock(WorkoutSessionMapper.class);
 
@@ -166,58 +182,66 @@ class WorkoutServiceTest {
         UserMapper userMapper =
                 mock(UserMapper.class);
 
+        ExerciseMapper exerciseMapper =
+                mock(ExerciseMapper.class);
+
         WorkoutService workoutService =
                 new WorkoutService(
                         workoutSessionMapper,
                         workoutSetMapper,
-                        userMapper);
+                        userMapper,
+                        exerciseMapper);
 
         User user = new User();
         user.setId(1L);
 
-        when(userMapper.findById(1L)).thenReturn(user);
+        when(userMapper.findById(1L))
+                .thenReturn(user);
 
-        org.mockito.Mockito.doAnswer(invocation -> {
-
-            WorkoutSession session =
-                    invocation.getArgument(0);
-
-            session.setId(102L);
-
-            return null;
-
-        }).when(workoutSessionMapper).insert(
-                org.mockito.ArgumentMatchers.any());
+        when(exerciseMapper.findById(1L))
+                .thenReturn(mock(overload_api.model.Exercise.class));
 
         WorkoutExerciseRequest exerciseRequest =
                 new WorkoutExerciseRequest();
 
         exerciseRequest.setExerciseId(1L);
-
         exerciseRequest.setSets(null);
 
         WorkoutRequest request =
                 new WorkoutRequest();
 
         request.setUserId(1L);
-
         request.setExercises(
                 List.of(exerciseRequest));
 
-        List<WorkoutSet> result =
-                workoutService.create(request);
+        IllegalArgumentException exception =
+                assertThrows(
+                        IllegalArgumentException.class,
+                        () -> workoutService.create(request));
 
-        assertNotNull(result);
+        assertEquals(
+                "Workout sets must not be null or empty",
+                exception.getMessage());
 
-        assertEquals(0, result.size());
+        verify(exerciseMapper, times(1))
+                .findById(1L);
+
+        verify(workoutSessionMapper, never())
+                .insert(any(WorkoutSession.class));
+
+        verify(workoutSetMapper, never())
+                .insert(any(WorkoutSet.class));
+
+        verify(workoutSessionMapper, never())
+                .updateFinishedAt(anyLong());
     }
 
     /**
-     * 存在しないユーザーの場合にリソース未存在例外を返すことを確認する。
+     * セット情報が空の場合に例外が発生し、
+     * 登録処理が実行されないことを確認する。
      */
     @Test
-    void create_存在しないユーザーの場合_リソース未存在例外を返す() {
-
+    void createThrowsExceptionWhenSetsAreEmpty() {
         WorkoutSessionMapper workoutSessionMapper =
                 mock(WorkoutSessionMapper.class);
 
@@ -227,36 +251,122 @@ class WorkoutServiceTest {
         UserMapper userMapper =
                 mock(UserMapper.class);
 
+        ExerciseMapper exerciseMapper =
+                mock(ExerciseMapper.class);
+
         WorkoutService workoutService =
                 new WorkoutService(
                         workoutSessionMapper,
                         workoutSetMapper,
-                        userMapper);
+                        userMapper,
+                        exerciseMapper);
+
+        User user = new User();
+        user.setId(1L);
+
+        when(userMapper.findById(1L))
+                .thenReturn(user);
+
+        when(exerciseMapper.findById(1L))
+                .thenReturn(mock(overload_api.model.Exercise.class));
+
+        WorkoutExerciseRequest exerciseRequest =
+                new WorkoutExerciseRequest();
+
+        exerciseRequest.setExerciseId(1L);
+        exerciseRequest.setSets(List.of());
+
+        WorkoutRequest request =
+                new WorkoutRequest();
+
+        request.setUserId(1L);
+        request.setExercises(
+                List.of(exerciseRequest));
+
+        IllegalArgumentException exception =
+                assertThrows(
+                        IllegalArgumentException.class,
+                        () -> workoutService.create(request));
+
+        assertEquals(
+                "Workout sets must not be null or empty",
+                exception.getMessage());
+
+        verify(exerciseMapper, times(1))
+                .findById(1L);
+
+        verify(workoutSessionMapper, never())
+                .insert(any(WorkoutSession.class));
+
+        verify(workoutSetMapper, never())
+                .insert(any(WorkoutSet.class));
+
+        verify(workoutSessionMapper, never())
+                .updateFinishedAt(anyLong());
+    }
+
+    /**
+     * 存在しないユーザーの場合に、
+     * リソース未存在例外が発生することを確認する。
+     */
+    @Test
+    void createThrowsResourceNotFoundExceptionWhenUserDoesNotExist() {
+        WorkoutSessionMapper workoutSessionMapper =
+                mock(WorkoutSessionMapper.class);
+
+        WorkoutSetMapper workoutSetMapper =
+                mock(WorkoutSetMapper.class);
+
+        UserMapper userMapper =
+                mock(UserMapper.class);
+
+        ExerciseMapper exerciseMapper =
+                mock(ExerciseMapper.class);
+
+        WorkoutService workoutService =
+                new WorkoutService(
+                        workoutSessionMapper,
+                        workoutSetMapper,
+                        userMapper,
+                        exerciseMapper);
 
         WorkoutRequest request =
                 new WorkoutRequest();
 
         request.setUserId(9999L);
 
-        when(userMapper.findById(9999L)).thenReturn(null);
+        when(userMapper.findById(9999L))
+                .thenReturn(null);
 
         ResourceNotFoundException exception =
-                org.junit.jupiter.api.Assertions.assertThrows(
+                assertThrows(
                         ResourceNotFoundException.class,
                         () -> workoutService.create(request));
 
         assertEquals(
                 "User not found",
                 exception.getMessage());
+
+        verify(exerciseMapper, never())
+                .findById(anyLong());
+
+        verify(workoutSessionMapper, never())
+                .insert(any(WorkoutSession.class));
+
+        verify(workoutSetMapper, never())
+                .insert(any(WorkoutSet.class));
+
+        verify(workoutSessionMapper, never())
+                .updateFinishedAt(anyLong());
     }
 
     /**
-     * 複数セットの場合に、すべてのセットを登録して返すことを確認する。
-     * あわせて、種目単位のメモが各セットに設定されることを確認する。
+     * 存在しない種目IDが指定された場合に、
+     * リソース未存在例外が発生し、
+     * 登録処理が実行されないことを確認する。
      */
     @Test
-    void create_複数セットの場合_全セットに種目のメモを設定して登録する() {
-
+    void createThrowsResourceNotFoundExceptionWhenExerciseDoesNotExist() {
         WorkoutSessionMapper workoutSessionMapper =
                 mock(WorkoutSessionMapper.class);
 
@@ -266,69 +376,146 @@ class WorkoutServiceTest {
         UserMapper userMapper =
                 mock(UserMapper.class);
 
+        ExerciseMapper exerciseMapper =
+                mock(ExerciseMapper.class);
+
         WorkoutService workoutService =
                 new WorkoutService(
                         workoutSessionMapper,
                         workoutSetMapper,
-                        userMapper);
+                        userMapper,
+                        exerciseMapper);
 
         User user = new User();
         user.setId(1L);
 
-        when(userMapper.findById(1L)).thenReturn(user);
+        when(userMapper.findById(1L))
+                .thenReturn(user);
+
+        when(exerciseMapper.findById(9999L))
+                .thenReturn(null);
+
+        WorkoutSetRequest setRequest =
+                new WorkoutSetRequest();
+
+        setRequest.setSetNumber(1);
+        setRequest.setWeightKg(
+                new BigDecimal("60.00"));
+        setRequest.setReps(10);
+
+        WorkoutExerciseRequest exerciseRequest =
+                new WorkoutExerciseRequest();
+
+        exerciseRequest.setExerciseId(9999L);
+        exerciseRequest.setSets(
+                List.of(setRequest));
+
+        WorkoutRequest request =
+                new WorkoutRequest();
+
+        request.setUserId(1L);
+        request.setExercises(
+                List.of(exerciseRequest));
+
+        ResourceNotFoundException exception =
+                assertThrows(
+                        ResourceNotFoundException.class,
+                        () -> workoutService.create(request));
+
+        assertEquals(
+                "Exercise not found",
+                exception.getMessage());
+
+        verify(userMapper, times(1))
+                .findById(1L);
+
+        verify(exerciseMapper, times(1))
+                .findById(9999L);
+
+        verify(workoutSessionMapper, never())
+                .insert(any(WorkoutSession.class));
+
+        verify(workoutSetMapper, never())
+                .insert(any(WorkoutSet.class));
+
+        verify(workoutSessionMapper, never())
+                .updateFinishedAt(anyLong());
+    }
+
+    /**
+     * 複数セットの場合に、
+     * すべてのセットを登録して返すことを確認する。
+     * あわせて、種目単位のメモが各セットに
+     * 設定されることを確認する。
+     */
+    @Test
+    void createRegistersAllSetsWithExerciseNote() {
+        WorkoutSessionMapper workoutSessionMapper =
+                mock(WorkoutSessionMapper.class);
+
+        WorkoutSetMapper workoutSetMapper =
+                mock(WorkoutSetMapper.class);
+
+        UserMapper userMapper =
+                mock(UserMapper.class);
+
+        ExerciseMapper exerciseMapper =
+                mock(ExerciseMapper.class);
+
+        WorkoutService workoutService =
+                new WorkoutService(
+                        workoutSessionMapper,
+                        workoutSetMapper,
+                        userMapper,
+                        exerciseMapper);
+
+        User user = new User();
+        user.setId(1L);
+
+        when(userMapper.findById(1L))
+                .thenReturn(user);
+
+        when(exerciseMapper.findById(1L))
+                .thenReturn(mock(overload_api.model.Exercise.class));
 
         org.mockito.Mockito.doAnswer(invocation -> {
-
             WorkoutSession session =
                     invocation.getArgument(0);
-
             session.setId(101L);
-
             return null;
-
         }).when(workoutSessionMapper).insert(
-                org.mockito.ArgumentMatchers.any());
+                any(WorkoutSession.class));
 
         org.mockito.Mockito.doAnswer(invocation -> {
-
             WorkoutSet set =
                     invocation.getArgument(0);
-
             set.setId(
                     set.getSetNumber().longValue());
-
             return null;
-
         }).when(workoutSetMapper).insert(
-                org.mockito.ArgumentMatchers.any());
+                any(WorkoutSet.class));
 
         WorkoutSetRequest set1 =
                 new WorkoutSetRequest();
 
         set1.setSetNumber(1);
-
         set1.setWeightKg(
                 new BigDecimal("60.00"));
-
         set1.setReps(10);
 
         WorkoutSetRequest set2 =
                 new WorkoutSetRequest();
 
         set2.setSetNumber(2);
-
         set2.setWeightKg(
                 new BigDecimal("65.00"));
-
         set2.setReps(8);
 
         WorkoutExerciseRequest exerciseRequest =
                 new WorkoutExerciseRequest();
 
         exerciseRequest.setExerciseId(1L);
-
         exerciseRequest.setNote("複数セットテスト");
-
         exerciseRequest.setSets(
                 List.of(set1, set2));
 
@@ -336,7 +523,6 @@ class WorkoutServiceTest {
                 new WorkoutRequest();
 
         request.setUserId(1L);
-
         request.setExercises(
                 List.of(exerciseRequest));
 
@@ -344,7 +530,6 @@ class WorkoutServiceTest {
                 workoutService.create(request);
 
         assertNotNull(result);
-
         assertEquals(2, result.size());
 
         assertEquals(
@@ -395,6 +580,9 @@ class WorkoutServiceTest {
                 "複数セットテスト",
                 result.get(1).getNote());
 
+        verify(exerciseMapper, times(1))
+                .findById(1L);
+
         verify(workoutSessionMapper, times(1))
                 .insert(any(WorkoutSession.class));
 
@@ -402,15 +590,16 @@ class WorkoutServiceTest {
                 .insert(any(WorkoutSet.class));
 
         verify(workoutSessionMapper, times(1))
-                .updateFinishedAt(anyLong());
+                .updateFinishedAt(101L);
     }
 
     /**
-     * 履歴が存在する場合に、正しく履歴を返すことを確認する。
+     * 複数種目を登録した場合に、
+     * リクエスト内の種目順に応じて種目順が設定されることを確認する。
+     * 同一種目の複数セットには同じ種目順が設定されることを確認する。
      */
     @Test
-    void findHistoryByUserId_履歴がある場合_正しく履歴を返す() {
-
+    void createSetsExerciseOrderBasedOnRequestOrder() {
         WorkoutSessionMapper workoutSessionMapper =
                 mock(WorkoutSessionMapper.class);
 
@@ -420,36 +609,192 @@ class WorkoutServiceTest {
         UserMapper userMapper =
                 mock(UserMapper.class);
 
+        ExerciseMapper exerciseMapper =
+                mock(ExerciseMapper.class);
+
         WorkoutService workoutService =
                 new WorkoutService(
                         workoutSessionMapper,
                         workoutSetMapper,
-                        userMapper);
+                        userMapper,
+                        exerciseMapper);
+
+        User user = new User();
+        user.setId(1L);
+
+        when(userMapper.findById(1L))
+                .thenReturn(user);
+
+        when(exerciseMapper.findById(1L))
+                .thenReturn(mock(overload_api.model.Exercise.class));
+
+        when(exerciseMapper.findById(2L))
+                .thenReturn(mock(overload_api.model.Exercise.class));
+
+        org.mockito.Mockito.doAnswer(invocation -> {
+            WorkoutSession session =
+                    invocation.getArgument(0);
+            session.setId(101L);
+            return null;
+        }).when(workoutSessionMapper).insert(
+                any(WorkoutSession.class));
+
+        WorkoutSetRequest firstSet =
+                new WorkoutSetRequest();
+
+        firstSet.setSetNumber(1);
+        firstSet.setWeightKg(
+                new BigDecimal("60.00"));
+        firstSet.setReps(10);
+
+        WorkoutSetRequest secondSet =
+                new WorkoutSetRequest();
+
+        secondSet.setSetNumber(2);
+        secondSet.setWeightKg(
+                new BigDecimal("65.00"));
+        secondSet.setReps(8);
+
+        WorkoutExerciseRequest firstExercise =
+                new WorkoutExerciseRequest();
+
+        firstExercise.setExerciseId(1L);
+        firstExercise.setNote("1番目の種目");
+        firstExercise.setSets(
+                List.of(firstSet, secondSet));
+
+        WorkoutSetRequest thirdSet =
+                new WorkoutSetRequest();
+
+        thirdSet.setSetNumber(1);
+        thirdSet.setWeightKg(
+                new BigDecimal("80.00"));
+        thirdSet.setReps(5);
+
+        WorkoutExerciseRequest secondExercise =
+                new WorkoutExerciseRequest();
+
+        secondExercise.setExerciseId(2L);
+        secondExercise.setNote("2番目の種目");
+        secondExercise.setSets(
+                List.of(thirdSet));
+
+        WorkoutRequest request =
+                new WorkoutRequest();
+
+        request.setUserId(1L);
+        request.setExercises(
+                List.of(
+                        firstExercise,
+                        secondExercise));
+
+        List<WorkoutSet> result =
+                workoutService.create(request);
+
+        assertNotNull(result);
+        assertEquals(3, result.size());
+
+        /*
+         * 1番目の種目に含まれる2セットには、
+         * 同じ種目順1が設定されることを確認する。
+         */
+        assertEquals(
+                1L,
+                result.get(0).getExerciseId());
+
+        assertEquals(
+                1,
+                result.get(0).getExerciseOrder());
+
+        assertEquals(
+                1,
+                result.get(0).getSetNumber());
+
+        assertEquals(
+                1L,
+                result.get(1).getExerciseId());
+
+        assertEquals(
+                1,
+                result.get(1).getExerciseOrder());
+
+        assertEquals(
+                2,
+                result.get(1).getSetNumber());
+
+        /*
+         * 2番目の種目には、
+         * 種目順2が設定されることを確認する。
+         */
+        assertEquals(
+                2L,
+                result.get(2).getExerciseId());
+
+        assertEquals(
+                2,
+                result.get(2).getExerciseOrder());
+
+        assertEquals(
+                1,
+                result.get(2).getSetNumber());
+
+        verify(userMapper, times(1))
+                .findById(1L);
+
+        verify(exerciseMapper, times(1))
+                .findById(1L);
+
+        verify(exerciseMapper, times(1))
+                .findById(2L);
+
+        verify(workoutSessionMapper, times(1))
+                .insert(any(WorkoutSession.class));
+
+        verify(workoutSetMapper, times(3))
+                .insert(any(WorkoutSet.class));
+
+        verify(workoutSessionMapper, times(1))
+                .updateFinishedAt(101L);
+    }
+
+    /**
+     * 履歴が存在する場合に、
+     * 正しく履歴を返すことを確認する。
+     */
+    @Test
+    void findHistoryByUserIdReturnsHistoryWhenHistoryExists() {
+        WorkoutSessionMapper workoutSessionMapper =
+                mock(WorkoutSessionMapper.class);
+
+        WorkoutSetMapper workoutSetMapper =
+                mock(WorkoutSetMapper.class);
+
+        UserMapper userMapper =
+                mock(UserMapper.class);
+
+        ExerciseMapper exerciseMapper =
+                mock(ExerciseMapper.class);
+
+        WorkoutService workoutService =
+                new WorkoutService(
+                        workoutSessionMapper,
+                        workoutSetMapper,
+                        userMapper,
+                        exerciseMapper);
 
         WorkoutHistoryRow row =
                 new WorkoutHistoryRow();
 
         row.setSessionId(100L);
-
         row.setStartedAt(
-                java.time.LocalDateTime.of(
-                        2026,
-                        9,
-                        8,
-                        10,
-                        0));
-
+                LocalDateTime.of(
+                        2026, 9, 8, 10, 0));
         row.setExerciseId(1L);
-
         row.setExerciseName("ベンチプレス");
-
         row.setSetNumber(1);
-
         row.setWeightKg(
                 new BigDecimal("60.00"));
-
         row.setReps(10);
-
         row.setNote("単体テスト");
 
         when(workoutSetMapper.findHistoryByUserId(1L))
@@ -459,7 +804,6 @@ class WorkoutServiceTest {
                 workoutService.findHistoryByUserId(1L);
 
         assertNotNull(result);
-
         assertEquals(1, result.size());
 
         WorkoutHistoryResponse history =
@@ -468,6 +812,11 @@ class WorkoutServiceTest {
         assertEquals(
                 100L,
                 history.getSessionId());
+
+        assertEquals(
+                LocalDateTime.of(
+                        2026, 9, 8, 10, 0),
+                history.getStartedAt());
 
         assertEquals(
                 1L,
@@ -487,24 +836,31 @@ class WorkoutServiceTest {
 
         assertEquals(
                 1,
-                history.getSets().get(0).getSetNumber());
+                history.getSets()
+                        .get(0)
+                        .getSetNumber());
 
         assertEquals(
                 new BigDecimal("60.00"),
-                history.getSets().get(0).getWeightKg());
+                history.getSets()
+                        .get(0)
+                        .getWeightKg());
 
         assertEquals(
                 10,
-                history.getSets().get(0).getReps());
+                history.getSets()
+                        .get(0)
+                        .getReps());
     }
 
     /**
-     * 複数セットの場合に、同じ種目のセットをまとめて返すことを確認する。
-     * あわせて、種目単位のメモが履歴に正しく保持されることを確認する。
+     * 複数セットの場合に、
+     * 同じ種目のセットをまとめて返すことを確認する。
+     * あわせて、種目単位のメモが履歴に
+     * 正しく保持されることを確認する。
      */
     @Test
-    void findHistoryByUserId_複数セットの場合_同じ種目にまとめて返す() {
-
+    void findHistoryByUserIdGroupsMultipleSetsForSameExercise() {
         WorkoutSessionMapper workoutSessionMapper =
                 mock(WorkoutSessionMapper.class);
 
@@ -514,72 +870,54 @@ class WorkoutServiceTest {
         UserMapper userMapper =
                 mock(UserMapper.class);
 
+        ExerciseMapper exerciseMapper =
+                mock(ExerciseMapper.class);
+
         WorkoutService workoutService =
                 new WorkoutService(
                         workoutSessionMapper,
                         workoutSetMapper,
-                        userMapper);
+                        userMapper,
+                        exerciseMapper);
 
         WorkoutHistoryRow row1 =
                 new WorkoutHistoryRow();
 
         row1.setSessionId(100L);
-
         row1.setStartedAt(
-                java.time.LocalDateTime.of(
-                        2026,
-                        9,
-                        8,
-                        10,
-                        0));
-
+                LocalDateTime.of(
+                        2026, 9, 8, 10, 0));
         row1.setExerciseId(1L);
-
         row1.setExerciseName("ベンチプレス");
-
         row1.setSetNumber(1);
-
         row1.setWeightKg(
                 new BigDecimal("60.00"));
-
         row1.setReps(10);
-
         row1.setNote("複数セットテスト");
 
         WorkoutHistoryRow row2 =
                 new WorkoutHistoryRow();
 
         row2.setSessionId(100L);
-
         row2.setStartedAt(
-                java.time.LocalDateTime.of(
-                        2026,
-                        9,
-                        8,
-                        10,
-                        0));
-
+                LocalDateTime.of(
+                        2026, 9, 8, 10, 0));
         row2.setExerciseId(1L);
-
         row2.setExerciseName("ベンチプレス");
-
         row2.setSetNumber(2);
-
         row2.setWeightKg(
                 new BigDecimal("65.00"));
-
         row2.setReps(8);
-
         row2.setNote("複数セットテスト");
 
         when(workoutSetMapper.findHistoryByUserId(1L))
-                .thenReturn(List.of(row1, row2));
+                .thenReturn(
+                        List.of(row1, row2));
 
         List<WorkoutHistoryResponse> result =
                 workoutService.findHistoryByUserId(1L);
 
         assertNotNull(result);
-
         assertEquals(1, result.size());
 
         WorkoutHistoryResponse history =
@@ -607,35 +945,47 @@ class WorkoutServiceTest {
 
         assertEquals(
                 1,
-                history.getSets().get(0).getSetNumber());
+                history.getSets()
+                        .get(0)
+                        .getSetNumber());
 
         assertEquals(
                 new BigDecimal("60.00"),
-                history.getSets().get(0).getWeightKg());
+                history.getSets()
+                        .get(0)
+                        .getWeightKg());
 
         assertEquals(
                 10,
-                history.getSets().get(0).getReps());
+                history.getSets()
+                        .get(0)
+                        .getReps());
 
         assertEquals(
                 2,
-                history.getSets().get(1).getSetNumber());
+                history.getSets()
+                        .get(1)
+                        .getSetNumber());
 
         assertEquals(
                 new BigDecimal("65.00"),
-                history.getSets().get(1).getWeightKg());
+                history.getSets()
+                        .get(1)
+                        .getWeightKg());
 
         assertEquals(
                 8,
-                history.getSets().get(1).getReps());
+                history.getSets()
+                        .get(1)
+                        .getReps());
     }
 
     /**
-     * 複数種目の場合に、種目ごとに履歴を分けて返すことを確認する。
+     * 複数種目の場合に、
+     * 種目ごとに履歴を分けて返すことを確認する。
      */
     @Test
-    void findHistoryByUserId_複数種目の場合_種目ごとに分けて返す() {
-
+    void findHistoryByUserIdSeparatesHistoryByExercise() {
         WorkoutSessionMapper workoutSessionMapper =
                 mock(WorkoutSessionMapper.class);
 
@@ -645,72 +995,54 @@ class WorkoutServiceTest {
         UserMapper userMapper =
                 mock(UserMapper.class);
 
+        ExerciseMapper exerciseMapper =
+                mock(ExerciseMapper.class);
+
         WorkoutService workoutService =
                 new WorkoutService(
                         workoutSessionMapper,
                         workoutSetMapper,
-                        userMapper);
+                        userMapper,
+                        exerciseMapper);
 
         WorkoutHistoryRow benchPress =
                 new WorkoutHistoryRow();
 
         benchPress.setSessionId(100L);
-
         benchPress.setStartedAt(
-                java.time.LocalDateTime.of(
-                        2026,
-                        9,
-                        8,
-                        10,
-                        0));
-
+                LocalDateTime.of(
+                        2026, 9, 8, 10, 0));
         benchPress.setExerciseId(1L);
-
         benchPress.setExerciseName("ベンチプレス");
-
         benchPress.setSetNumber(1);
-
         benchPress.setWeightKg(
                 new BigDecimal("60.00"));
-
         benchPress.setReps(10);
-
         benchPress.setNote("複数種目テスト");
 
         WorkoutHistoryRow squat =
                 new WorkoutHistoryRow();
 
         squat.setSessionId(100L);
-
         squat.setStartedAt(
-                java.time.LocalDateTime.of(
-                        2026,
-                        9,
-                        8,
-                        10,
-                        0));
-
+                LocalDateTime.of(
+                        2026, 9, 8, 10, 0));
         squat.setExerciseId(2L);
-
         squat.setExerciseName("スクワット");
-
         squat.setSetNumber(1);
-
         squat.setWeightKg(
                 new BigDecimal("80.00"));
-
         squat.setReps(8);
-
         squat.setNote("複数種目テスト");
 
         when(workoutSetMapper.findHistoryByUserId(1L))
-                .thenReturn(List.of(benchPress, squat));
+                .thenReturn(
+                        List.of(benchPress, squat));
 
         List<WorkoutHistoryResponse> result =
                 workoutService.findHistoryByUserId(1L);
 
         assertNotNull(result);
-
         assertEquals(2, result.size());
 
         WorkoutHistoryResponse benchPressHistory =
@@ -738,11 +1070,15 @@ class WorkoutServiceTest {
 
         assertEquals(
                 new BigDecimal("60.00"),
-                benchPressHistory.getSets().get(0).getWeightKg());
+                benchPressHistory.getSets()
+                        .get(0)
+                        .getWeightKg());
 
         assertEquals(
                 10,
-                benchPressHistory.getSets().get(0).getReps());
+                benchPressHistory.getSets()
+                        .get(0)
+                        .getReps());
 
         WorkoutHistoryResponse squatHistory =
                 result.get(1);
@@ -769,19 +1105,23 @@ class WorkoutServiceTest {
 
         assertEquals(
                 new BigDecimal("80.00"),
-                squatHistory.getSets().get(0).getWeightKg());
+                squatHistory.getSets()
+                        .get(0)
+                        .getWeightKg());
 
         assertEquals(
                 8,
-                squatHistory.getSets().get(0).getReps());
+                squatHistory.getSets()
+                        .get(0)
+                        .getReps());
     }
 
     /**
-     * 履歴が存在しない場合に、空のリストを返すことを確認する。
+     * 同一セッション内で同じ種目が複数回実施された場合に、
+     * 種目の実施順ごとに履歴を分けて返すことを確認する。
      */
     @Test
-    void findHistoryByUserId_履歴がない場合_空のリストを返す() {
-
+    void findHistoryByUserIdSeparatesSameExerciseByExerciseOrder() {
         WorkoutSessionMapper workoutSessionMapper =
                 mock(WorkoutSessionMapper.class);
 
@@ -791,11 +1131,133 @@ class WorkoutServiceTest {
         UserMapper userMapper =
                 mock(UserMapper.class);
 
+        ExerciseMapper exerciseMapper =
+                mock(ExerciseMapper.class);
+
         WorkoutService workoutService =
                 new WorkoutService(
                         workoutSessionMapper,
                         workoutSetMapper,
-                        userMapper);
+                        userMapper,
+                        exerciseMapper);
+
+        WorkoutHistoryRow firstBenchPress =
+                new WorkoutHistoryRow();
+
+        firstBenchPress.setSessionId(100L);
+        firstBenchPress.setStartedAt(
+                LocalDateTime.of(
+                        2026, 9, 8, 10, 0));
+        firstBenchPress.setExerciseId(1L);
+        firstBenchPress.setExerciseName("ベンチプレス");
+        firstBenchPress.setExerciseOrder(1);
+        firstBenchPress.setSetNumber(1);
+        firstBenchPress.setWeightKg(
+                new BigDecimal("60.00"));
+        firstBenchPress.setReps(10);
+        firstBenchPress.setNote("最初のベンチプレス");
+
+        WorkoutHistoryRow squat =
+                new WorkoutHistoryRow();
+
+        squat.setSessionId(100L);
+        squat.setStartedAt(
+                LocalDateTime.of(
+                        2026, 9, 8, 10, 0));
+        squat.setExerciseId(2L);
+        squat.setExerciseName("スクワット");
+        squat.setExerciseOrder(2);
+        squat.setSetNumber(1);
+        squat.setWeightKg(
+                new BigDecimal("80.00"));
+        squat.setReps(8);
+        squat.setNote("スクワット");
+
+        WorkoutHistoryRow secondBenchPress =
+                new WorkoutHistoryRow();
+
+        secondBenchPress.setSessionId(100L);
+        secondBenchPress.setStartedAt(
+                LocalDateTime.of(
+                        2026, 9, 8, 10, 0));
+        secondBenchPress.setExerciseId(1L);
+        secondBenchPress.setExerciseName("ベンチプレス");
+        secondBenchPress.setExerciseOrder(3);
+        secondBenchPress.setSetNumber(1);
+        secondBenchPress.setWeightKg(
+                new BigDecimal("50.00"));
+        secondBenchPress.setReps(12);
+        secondBenchPress.setNote("2回目のベンチプレス");
+
+        when(workoutSetMapper.findHistoryByUserId(1L))
+                .thenReturn(
+                        List.of(
+                                firstBenchPress,
+                                squat,
+                                secondBenchPress));
+
+        List<WorkoutHistoryResponse> result =
+                workoutService.findHistoryByUserId(1L);
+
+        assertNotNull(result);
+        assertEquals(3, result.size());
+
+        assertEquals(
+                1L,
+                result.get(0).getExerciseId());
+        assertEquals(
+                "最初のベンチプレス",
+                result.get(0).getNote());
+        assertEquals(
+                new BigDecimal("60.00"),
+                result.get(0).getSets()
+                        .get(0)
+                        .getWeightKg());
+
+        assertEquals(
+                2L,
+                result.get(1).getExerciseId());
+        assertEquals(
+                "スクワット",
+                result.get(1).getNote());
+
+        assertEquals(
+                1L,
+                result.get(2).getExerciseId());
+        assertEquals(
+                "2回目のベンチプレス",
+                result.get(2).getNote());
+        assertEquals(
+                new BigDecimal("50.00"),
+                result.get(2).getSets()
+                        .get(0)
+                        .getWeightKg());
+    }
+
+    /**
+     * 履歴が存在しない場合に、
+     * 空のリストを返すことを確認する。
+     */
+    @Test
+    void findHistoryByUserIdReturnsEmptyListWhenHistoryDoesNotExist() {
+        WorkoutSessionMapper workoutSessionMapper =
+                mock(WorkoutSessionMapper.class);
+
+        WorkoutSetMapper workoutSetMapper =
+                mock(WorkoutSetMapper.class);
+
+        UserMapper userMapper =
+                mock(UserMapper.class);
+
+        ExerciseMapper exerciseMapper =
+                mock(ExerciseMapper.class);
+
+        WorkoutService workoutService =
+                new WorkoutService(
+                        workoutSessionMapper,
+                        workoutSetMapper,
+                        userMapper,
+                        exerciseMapper);
 
         when(workoutSetMapper.findHistoryByUserId(1L))
                 .thenReturn(List.of());
@@ -804,7 +1266,6 @@ class WorkoutServiceTest {
                 workoutService.findHistoryByUserId(1L);
 
         assertNotNull(result);
-
         assertEquals(0, result.size());
     }
 }

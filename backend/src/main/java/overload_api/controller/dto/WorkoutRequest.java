@@ -11,18 +11,23 @@ import jakarta.validation.constraints.NotEmpty;
  */
 public class WorkoutRequest {
 
-    /**
-     * ワークアウトを実施したユーザーのID。
-     */
-    @NotNull
-    private Long userId;
+	/**
+	 * ワークアウトを実施したユーザーのID。
+	 *
+	 * @NotNullにより、ユーザーIDが未入力でないことを検証する。
+	 */
+	@NotNull
+	private Long userId;
 
-    /**
-     * ワークアウトで実施した種目の一覧。
-     */
-    @NotEmpty(message = "種目を1つ以上指定してください")
-    @Valid
-    private List<WorkoutExerciseRequest> exercises;
+	/**
+	 * ワークアウトで実施した種目の一覧。
+	 *
+	 * @NotEmptyにより、種目一覧自体がnullまたは空にならないことを検証する。
+	 * @Validにより、種目一覧内の各種目の入力値を検証する。
+	 */
+	@NotEmpty(message = "種目を1つ以上指定してください")
+	@Valid
+	private List<@NotNull WorkoutExerciseRequest> exercises;
 
     /**
      * ユーザーIDを取得する。

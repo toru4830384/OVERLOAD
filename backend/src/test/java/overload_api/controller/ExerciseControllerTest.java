@@ -12,10 +12,17 @@ import org.junit.jupiter.api.Test;
 import overload_api.model.Exercise;
 import overload_api.service.ExerciseService;
 
+/**
+ * ExerciseControllerの単体テストを行うクラス。
+ */
 class ExerciseControllerTest {
 
+    /**
+     * 種目が存在する場合に、
+     * 種目一覧を返すことを確認する。
+     */
     @Test
-    void findAll_種目が存在する場合_種目一覧を返す() {
+    void findAllReturnsExercisesWhenExercisesExist() {
         ExerciseService exerciseService =
                 mock(ExerciseService.class);
 
@@ -39,13 +46,21 @@ class ExerciseControllerTest {
         assertNotNull(result);
         assertEquals(2, result.size());
         assertEquals(1L, result.get(0).getId());
-        assertEquals("ベンチプレス", result.get(0).getName());
+        assertEquals(
+                "ベンチプレス",
+                result.get(0).getName());
         assertEquals(2L, result.get(1).getId());
-        assertEquals("スクワット", result.get(1).getName());
+        assertEquals(
+                "スクワット",
+                result.get(1).getName());
     }
-    
+
+    /**
+     * 種目が存在しない場合に、
+     * 空のリストを返すことを確認する。
+     */
     @Test
-    void findAll_種目が存在しない場合_空のリストを返す() {
+    void findAllReturnsEmptyListWhenExercisesDoNotExist() {
         ExerciseService exerciseService =
                 mock(ExerciseService.class);
 

@@ -2,6 +2,7 @@ package overload_api.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -12,23 +13,34 @@ import org.junit.jupiter.api.Test;
 import overload_api.model.Muscle;
 import overload_api.service.MuscleService;
 
+/**
+ * MuscleControllerの単体テストを行うクラス。
+ */
 class MuscleControllerTest {
 
+    /**
+     * 部位が存在する場合に、
+     * 部位一覧を正しく返すことを確認する。
+     */
     @Test
-    void findAll_部位が存在する場合_一覧を返す() {
+    void findAllReturnsMusclesWhenDataExists() {
         MuscleService muscleService =
                 mock(MuscleService.class);
 
-        Muscle muscle1 = new Muscle();
+        Muscle muscle1 =
+                new Muscle();
         muscle1.setId(1L);
         muscle1.setName("胸");
 
-        Muscle muscle2 = new Muscle();
+        Muscle muscle2 =
+                new Muscle();
         muscle2.setId(2L);
         muscle2.setName("背中");
 
         when(muscleService.findAll())
-                .thenReturn(List.of(muscle1, muscle2));
+                .thenReturn(List.of(
+                        muscle1,
+                        muscle2));
 
         MuscleController muscleController =
                 new MuscleController(muscleService);
@@ -38,14 +50,28 @@ class MuscleControllerTest {
 
         assertNotNull(result);
         assertEquals(2, result.size());
-        assertEquals(1L, result.get(0).getId());
-        assertEquals("胸", result.get(0).getName());
-        assertEquals(2L, result.get(1).getId());
-        assertEquals("背中", result.get(1).getName());
+
+        assertEquals(
+                1L,
+                result.get(0).getId());
+        assertEquals(
+                "胸",
+                result.get(0).getName());
+
+        assertEquals(
+                2L,
+                result.get(1).getId());
+        assertEquals(
+                "背中",
+                result.get(1).getName());
     }
-    
+
+    /**
+     * 部位が存在しない場合に、
+     * 空のリストを返すことを確認する。
+     */
     @Test
-    void findAll_部位が存在しない場合_空のリストを返す() {
+    void findAllReturnsEmptyListWhenNoDataExists() {
         MuscleService muscleService =
                 mock(MuscleService.class);
 
@@ -59,6 +85,6 @@ class MuscleControllerTest {
                 muscleController.findAll();
 
         assertNotNull(result);
-        assertEquals(0, result.size());
+        assertTrue(result.isEmpty());
     }
 }

@@ -2,6 +2,9 @@ package overload_api.controller.dto;
 
 import java.math.BigDecimal;
 
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
+
 /**
  * ユーザー情報更新時のリクエスト情報を保持するDTO。
  */
@@ -19,12 +22,24 @@ public class UserUpdateRequest {
 
     /**
      * 年齢。
+     *
+     * @Minにより、年齢が0以上であることを検証する。
      */
+    @Min(
+            value = 0,
+            message = "年齢は0以上の値を入力してください")
     private Integer age;
 
     /**
      * 体重（kg）。
+     *
+     * @DecimalMinにより、
+     * 体重が0より大きい値であることを検証する。
      */
+    @DecimalMin(
+            value = "0.0",
+            inclusive = false,
+            message = "体重は0より大きい値を入力してください")
     private BigDecimal bodyWeightKg;
 
     /**
@@ -98,5 +113,4 @@ public class UserUpdateRequest {
     public void setBodyWeightKg(BigDecimal bodyWeightKg) {
         this.bodyWeightKg = bodyWeightKg;
     }
-
 }

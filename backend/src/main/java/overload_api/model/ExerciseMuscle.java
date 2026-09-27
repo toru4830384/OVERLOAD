@@ -50,5 +50,5 @@ public class ExerciseMuscle {
     public void setMuscleId(Long muscleId) {
         this.muscleId = muscleId;
     }
-    
+
 }

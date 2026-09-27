@@ -24,6 +24,11 @@ public class WorkoutHistoryRow {
     private Long exerciseId;
 
     /**
+     * 種目の実施順。
+     */
+    private Integer exerciseOrder;
+
+    /**
      * 種目名。
      */
     private String exerciseName;
@@ -118,6 +123,24 @@ public class WorkoutHistoryRow {
      */
     public void setExerciseName(String exerciseName) {
         this.exerciseName = exerciseName;
+    }
+
+    /**
+     * 種目の実施順を取得する。
+     *
+     * @return 種目の実施順
+     */
+    public Integer getExerciseOrder() {
+        return exerciseOrder;
+    }
+
+    /**
+     * 種目の実施順を設定する。
+     *
+     * @param exerciseOrder 種目の実施順
+     */
+    public void setExerciseOrder(Integer exerciseOrder) {
+        this.exerciseOrder = exerciseOrder;
     }
 
     /**

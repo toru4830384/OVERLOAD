@@ -26,11 +26,13 @@ public interface WorkoutSetMapper {
             id,
             session_id AS sessionId,
             exercise_id AS exerciseId,
+            exercise_order AS exerciseOrder,
             set_number AS setNumber,
             weight_kg AS weightKg,
-            reps
+            reps,
+            note
         FROM workout_sets
-        ORDER BY session_id, set_number
+        ORDER BY session_id, exercise_order, set_number
         """)
     List<WorkoutSet> findAll();
 
@@ -43,6 +45,7 @@ public interface WorkoutSetMapper {
         INSERT INTO workout_sets (
             session_id,
             exercise_id,
+            exercise_order,
             set_number,
             weight_kg,
             reps,
@@ -51,6 +54,7 @@ public interface WorkoutSetMapper {
         VALUES (
             #{sessionId},
             #{exerciseId},
+            #{exerciseOrder},
             #{setNumber},
             #{weightKg},
             #{reps},
@@ -72,6 +76,7 @@ public interface WorkoutSetMapper {
             wss.started_at AS startedAt,
             ws.exercise_id AS exerciseId,
             e.name AS exerciseName,
+            ws.exercise_order AS exerciseOrder,
             ws.set_number AS setNumber,
             ws.weight_kg AS weightKg,
             ws.reps,
@@ -82,8 +87,10 @@ public interface WorkoutSetMapper {
         INNER JOIN exercises e
             ON ws.exercise_id = e.id
         WHERE wss.user_id = #{userId}
-        ORDER BY wss.started_at DESC, ws.set_number
+        ORDER BY
+            wss.started_at DESC,
+            ws.exercise_order,
+            ws.set_number
         """)
     List<WorkoutHistoryRow> findHistoryByUserId(Long userId);
-
 }

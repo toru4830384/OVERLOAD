@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import overload_api.exception.ResourceNotFoundException;
+import overload_api.mapper.ExerciseMapper;
 import overload_api.mapper.UserMapper;
 import overload_api.mapper.WorkoutSessionMapper;
 import overload_api.mapper.WorkoutSetMapper;
@@ -31,6 +32,7 @@ public class WorkoutService {
     private final WorkoutSessionMapper workoutSessionMapper;
     private final WorkoutSetMapper workoutSetMapper;
     private final UserMapper userMapper;
+    private final ExerciseMapper exerciseMapper;
 
     /**
      * WorkoutServiceを生成する。
@@ -38,14 +40,17 @@ public class WorkoutService {
      * @param workoutSessionMapper ワークアウトセッションを操作するMapper
      * @param workoutSetMapper ワークアウトセットを操作するMapper
      * @param userMapper ユーザー情報を操作するMapper
+     * @param exerciseMapper 種目情報を操作するMapper
      */
     public WorkoutService(
             WorkoutSessionMapper workoutSessionMapper,
             WorkoutSetMapper workoutSetMapper,
-            UserMapper userMapper) {
+            UserMapper userMapper,
+            ExerciseMapper exerciseMapper) {
         this.workoutSessionMapper = workoutSessionMapper;
         this.workoutSetMapper = workoutSetMapper;
         this.userMapper = userMapper;
+        this.exerciseMapper = exerciseMapper;
     }
 
     /**
@@ -53,7 +58,8 @@ public class WorkoutService {
      *
      * @param request ワークアウト登録リクエスト
      * @return 登録したワークアウトセット一覧
-     * @throws ResourceNotFoundException ユーザーが存在しない場合
+     * @throws ResourceNotFoundException ユーザーまたは種目が存在しない場合
+     * @throws IllegalArgumentException セット情報が存在しない場合
      */
     @Transactional
     public List<WorkoutSet> create(WorkoutRequest request) {
@@ -61,7 +67,17 @@ public class WorkoutService {
             throw new ResourceNotFoundException("User not found");
         }
 
+        /*
+         * セッションを登録する前に、
+         * 全ての種目とセット情報が有効であることを確認する。
+         */
         for (WorkoutExerciseRequest exerciseRequest : request.getExercises()) {
+            if (exerciseMapper.findById(
+                    exerciseRequest.getExerciseId()) == null) {
+                throw new ResourceNotFoundException(
+                        "Exercise not found");
+            }
+
             if (exerciseRequest.getSets() == null
                     || exerciseRequest.getSets().isEmpty()) {
                 throw new IllegalArgumentException(
@@ -78,26 +94,42 @@ public class WorkoutService {
         Long sessionId = workoutSession.getId();
         List<WorkoutSet> workoutSets = new ArrayList<>();
 
-        // 種目ごとのセット情報をワークアウトセットとして登録する。
-        for (WorkoutExerciseRequest exerciseRequest : request.getExercises()) {
-            if (exerciseRequest.getSets() == null) {
-                continue;
-            }
+        /*
+         * リクエスト内の種目順を1から採番し、
+         * 同一種目の全セットに同じ種目順を設定して登録する。
+         */
+        for (int exerciseIndex = 0;
+                exerciseIndex < request.getExercises().size();
+                exerciseIndex++) {
+
+            WorkoutExerciseRequest exerciseRequest =
+                    request.getExercises().get(exerciseIndex);
+
+            int exerciseOrder = exerciseIndex + 1;
 
             for (WorkoutSetRequest setRequest : exerciseRequest.getSets()) {
                 WorkoutSet workoutSet = new WorkoutSet();
+
                 workoutSet.setSessionId(sessionId);
-                workoutSet.setExerciseId(exerciseRequest.getExerciseId());
-                workoutSet.setSetNumber(setRequest.getSetNumber());
-                workoutSet.setWeightKg(setRequest.getWeightKg());
-                workoutSet.setReps(setRequest.getReps());
-                workoutSet.setNote(exerciseRequest.getNote());
+                workoutSet.setExerciseId(
+                        exerciseRequest.getExerciseId());
+                workoutSet.setExerciseOrder(exerciseOrder);
+                workoutSet.setSetNumber(
+                        setRequest.getSetNumber());
+                workoutSet.setWeightKg(
+                        setRequest.getWeightKg());
+                workoutSet.setReps(
+                        setRequest.getReps());
+                workoutSet.setNote(
+                        exerciseRequest.getNote());
+
                 workoutSetMapper.insert(workoutSet);
                 workoutSets.add(workoutSet);
             }
         }
 
         workoutSessionMapper.updateFinishedAt(sessionId);
+
         return workoutSets;
     }
 
@@ -115,26 +147,46 @@ public class WorkoutService {
                 new LinkedHashMap<>();
 
         for (WorkoutHistoryRow row : rows) {
-            // 同一セッション内の同一種目ごとにセットをまとめるためのキーを作成する。
-            String key = row.getSessionId() + "-" + row.getExerciseId();
-            WorkoutHistoryResponse response = historyMap.get(key);
+            // 同一セッション内の同一実施種目ごとにセットをまとめるためのキーを作成する。
+            String key =
+                    row.getSessionId()
+                            + "-"
+                            + row.getExerciseId()
+                            + "-"
+                            + row.getExerciseOrder();
+
+            WorkoutHistoryResponse response =
+                    historyMap.get(key);
 
             if (response == null) {
                 response = new WorkoutHistoryResponse();
-                response.setSessionId(row.getSessionId());
-                response.setStartedAt(row.getStartedAt());
-                response.setExerciseId(row.getExerciseId());
-                response.setExerciseName(row.getExerciseName());
-                response.setNote(row.getNote());
-                response.setSets(new ArrayList<>());
+
+                response.setSessionId(
+                        row.getSessionId());
+                response.setStartedAt(
+                        row.getStartedAt());
+                response.setExerciseId(
+                        row.getExerciseId());
+                response.setExerciseName(
+                        row.getExerciseName());
+                response.setNote(
+                        row.getNote());
+                response.setSets(
+                        new ArrayList<>());
+
                 historyMap.put(key, response);
             }
 
             WorkoutHistorySetResponse set =
                     new WorkoutHistorySetResponse();
-            set.setSetNumber(row.getSetNumber());
-            set.setWeightKg(row.getWeightKg());
-            set.setReps(row.getReps());
+
+            set.setSetNumber(
+                    row.getSetNumber());
+            set.setWeightKg(
+                    row.getWeightKg());
+            set.setReps(
+                    row.getReps());
+
             response.getSets().add(set);
         }
 

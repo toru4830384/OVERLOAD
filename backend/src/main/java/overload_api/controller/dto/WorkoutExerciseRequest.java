@@ -30,7 +30,7 @@ public class WorkoutExerciseRequest {
      */
     @NotEmpty
     @Valid
-    private List<WorkoutSetRequest> sets;
+    private List<@NotNull WorkoutSetRequest> sets;
 
     /**
      * 種目のIDを取得する。

@@ -1,7 +1,5 @@
 package overload_api.controller;
 
-import java.math.BigDecimal;
-
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import jakarta.validation.Valid;
 import overload_api.controller.dto.UserUpdateRequest;
 import overload_api.model.User;
 import overload_api.service.UserService;
@@ -43,14 +42,12 @@ public class UserController {
      */
     @GetMapping("/{id}")
     public User findById(@PathVariable Long id) {
-
         User user = userService.findById(id);
 
         if (user == null) {
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
-                    "User not found"
-            );
+                    "User not found");
         }
 
         return user;
@@ -62,28 +59,13 @@ public class UserController {
      * @param id ユーザーID
      * @param request 更新するユーザー情報
      * @return 更新後のユーザー情報
-     * @throws ResponseStatusException 入力値が不正な場合、またはユーザーが存在しない場合
+     * @throws ResponseStatusException DB制約違反が発生した場合、
+     *         またはユーザーが存在しない場合
      */
     @PutMapping("/{id}")
     public User update(
             @PathVariable Long id,
-            @RequestBody UserUpdateRequest request) {
-
-        // 年齢と体重の入力値を事前にチェックする。
-        if (request.getAge() != null && request.getAge() < 0) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "年齢は0以上の値を入力してください"
-            );
-        }
-
-        if (request.getBodyWeightKg() != null
-                && request.getBodyWeightKg().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "体重は0より大きい値を入力してください"
-            );
-        }
+            @Valid @RequestBody UserUpdateRequest request) {
 
         User user;
 
@@ -93,25 +75,20 @@ public class UserController {
                     request.getName(),
                     request.getGender(),
                     request.getAge(),
-                    request.getBodyWeightKg()
-            );
+                    request.getBodyWeightKg());
         } catch (DataIntegrityViolationException e) {
-            // DBの制約違反をAPIの400エラーとして返す。
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "入力値が不正です",
-                    e
-            );
+                    e);
         }
 
         if (user == null) {
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
-                    "User not found"
-            );
+                    "User not found");
         }
 
         return user;
     }
-
 }

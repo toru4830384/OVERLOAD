@@ -23,6 +23,11 @@ public class WorkoutSet {
     private Long exerciseId;
 
     /**
+     * ワークアウト内での種目の登録順。
+     */
+    private Integer exerciseOrder;
+
+    /**
      * セット番号。
      */
     private Integer setNumber;
@@ -97,6 +102,24 @@ public class WorkoutSet {
     }
 
     /**
+     * ワークアウト内での種目の登録順を取得する。
+     *
+     * @return 種目の登録順
+     */
+    public Integer getExerciseOrder() {
+        return exerciseOrder;
+    }
+
+    /**
+     * ワークアウト内での種目の登録順を設定する。
+     *
+     * @param exerciseOrder 種目の登録順
+     */
+    public void setExerciseOrder(Integer exerciseOrder) {
+        this.exerciseOrder = exerciseOrder;
+    }
+
+    /**
      * セット番号を取得する。
      *
      * @return セット番号
@@ -167,5 +190,4 @@ public class WorkoutSet {
     public void setNote(String note) {
         this.note = note;
     }
-    
 }

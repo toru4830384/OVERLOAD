@@ -1,8 +1,10 @@
 package overload_api.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -14,6 +16,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import overload_api.exception.ResourceNotFoundException;
 import overload_api.service.WorkoutService;
 
 /**
@@ -35,12 +38,13 @@ class WorkoutControllerTest {
     private WorkoutService workoutService;
 
     /**
-     * ワークアウトを正常に登録し、登録したセット一覧を返すことを確認する。
+     * ワークアウトを正常に登録し、
+     * 登録したセット一覧を返すことを確認する。
      *
      * @throws Exception MockMvc実行時の例外
      */
     @Test
-    void create_正常系_ワークアウトを登録してセットを返す()
+    void createReturnsRegisteredSetsForValidRequest()
             throws Exception {
 
         overload_api.model.WorkoutSet workoutSet =
@@ -49,6 +53,7 @@ class WorkoutControllerTest {
         workoutSet.setId(1L);
         workoutSet.setSessionId(100L);
         workoutSet.setExerciseId(1L);
+        workoutSet.setExerciseOrder(1);
         workoutSet.setSetNumber(1);
         workoutSet.setWeightKg(new BigDecimal("50.00"));
         workoutSet.setReps(10);
@@ -97,6 +102,9 @@ class WorkoutControllerTest {
                                 .jsonPath("$[0].exerciseId").value(1))
                 .andExpect(
                         org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .jsonPath("$[0].exerciseOrder").value(1))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
                                 .jsonPath("$[0].setNumber").value(1))
                 .andExpect(
                         org.springframework.test.web.servlet.result.MockMvcResultMatchers
@@ -113,13 +121,73 @@ class WorkoutControllerTest {
     }
 
     /**
-     * ワークアウト登録時に必須項目が不足している場合、
+     * 存在しないリソースが指定された場合に、
+     * 404エラーと共通エラーレスポンスが返されることを確認する。
+     *
+     * @throws Exception MockMvc実行時の例外
+     */
+    @Test
+    void createReturnsNotFoundWhenResourceDoesNotExist()
+            throws Exception {
+
+        when(workoutService.create(
+                any(overload_api.service.dto.WorkoutRequest.class)))
+                .thenThrow(
+                        new ResourceNotFoundException(
+                                "Exercise not found"));
+
+        String requestBody = """
+                {
+                    "userId": 1,
+                    "exercises": [
+                        {
+                            "exerciseId": 9999,
+                            "note": "単体テスト",
+                            "sets": [
+                                {
+                                    "setNumber": 1,
+                                    "weightKg": 50.00,
+                                    "reps": 10
+                                }
+                            ]
+                        }
+                    ]
+                }
+                """;
+
+        mockMvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/workouts")
+                        .contentType(
+                                org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .status().isNotFound())
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .jsonPath("$.status").value(404))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .jsonPath("$.title")
+                                .value("Resource not found"))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .jsonPath("$.detail")
+                                .value("Exercise not found"));
+
+        verify(workoutService).create(
+                any(overload_api.service.dto.WorkoutRequest.class));
+    }
+
+    /**
+     * userIdがnullの場合に、
      * バリデーションエラーになることを確認する。
      *
      * @throws Exception MockMvc実行時の例外
      */
     @Test
-    void create_異常系_userIdがnullの場合_バリデーションエラー()
+    void createReturnsBadRequestWhenUserIdIsNull()
             throws Exception {
 
         String requestBody = """
@@ -150,6 +218,509 @@ class WorkoutControllerTest {
                 .andExpect(
                         org.springframework.test.web.servlet.result.MockMvcResultMatchers
                                 .status().isBadRequest());
+
+        verify(workoutService, never()).create(any());
+    }
+
+    /**
+     * セット番号がnullの場合に、
+     * バリデーションエラーになることを確認する。
+     *
+     * @throws Exception MockMvc実行時の例外
+     */
+    @Test
+    void createReturnsBadRequestWhenSetNumberIsNull()
+            throws Exception {
+
+        String requestBody = """
+                {
+                    "userId": 1,
+                    "exercises": [
+                        {
+                            "exerciseId": 1,
+                            "note": "test",
+                            "sets": [
+                                {
+                                    "setNumber": null,
+                                    "weightKg": 50.00,
+                                    "reps": 10
+                                }
+                            ]
+                        }
+                    ]
+                }
+                """;
+
+        mockMvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/workouts")
+                        .contentType(
+                                org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .status().isBadRequest());
+
+        verify(workoutService, never()).create(any());
+    }
+
+    /**
+     * セット番号が0の場合に、
+     * バリデーションエラーになることを確認する。
+     *
+     * @throws Exception MockMvc実行時の例外
+     */
+    @Test
+    void createReturnsBadRequestWhenSetNumberIsZero()
+            throws Exception {
+
+        String requestBody = """
+                {
+                    "userId": 1,
+                    "exercises": [
+                        {
+                            "exerciseId": 1,
+                            "note": "test",
+                            "sets": [
+                                {
+                                    "setNumber": 0,
+                                    "weightKg": 50.00,
+                                    "reps": 10
+                                }
+                            ]
+                        }
+                    ]
+                }
+                """;
+
+        mockMvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/workouts")
+                        .contentType(
+                                org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .status().isBadRequest());
+
+        verify(workoutService, never()).create(any());
+    }
+
+    /**
+     * 回数がnullの場合に、
+     * バリデーションエラーになることを確認する。
+     *
+     * @throws Exception MockMvc実行時の例外
+     */
+    @Test
+    void createReturnsBadRequestWhenRepsIsNull()
+            throws Exception {
+
+        String requestBody = """
+                {
+                    "userId": 1,
+                    "exercises": [
+                        {
+                            "exerciseId": 1,
+                            "note": "test",
+                            "sets": [
+                                {
+                                    "setNumber": 1,
+                                    "weightKg": 50.00,
+                                    "reps": null
+                                }
+                            ]
+                        }
+                    ]
+                }
+                """;
+
+        mockMvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/workouts")
+                        .contentType(
+                                org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .status().isBadRequest());
+
+        verify(workoutService, never()).create(any());
+    }
+
+    /**
+     * 回数が0の場合に、
+     * バリデーションエラーになることを確認する。
+     *
+     * @throws Exception MockMvc実行時の例外
+     */
+    @Test
+    void createReturnsBadRequestWhenRepsIsZero()
+            throws Exception {
+
+        String requestBody = """
+                {
+                    "userId": 1,
+                    "exercises": [
+                        {
+                            "exerciseId": 1,
+                            "note": "test",
+                            "sets": [
+                                {
+                                    "setNumber": 1,
+                                    "weightKg": 50.00,
+                                    "reps": 0
+                                }
+                            ]
+                        }
+                    ]
+                }
+                """;
+
+        mockMvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/workouts")
+                        .contentType(
+                                org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .status().isBadRequest());
+
+        verify(workoutService, never()).create(any());
+    }
+
+    /**
+     * exercisesがnullの場合に、
+     * バリデーションエラーになることを確認する。
+     *
+     * @throws Exception MockMvc実行時の例外
+     */
+    @Test
+    void createReturnsBadRequestWhenExercisesIsNull()
+            throws Exception {
+
+        String requestBody = """
+                {
+                    "userId": 1,
+                    "exercises": null
+                }
+                """;
+
+        mockMvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/workouts")
+                        .contentType(
+                                org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .status().isBadRequest());
+
+        verify(workoutService, never()).create(any());
+    }
+
+    /**
+     * exercisesが空の場合に、
+     * バリデーションエラーになることを確認する。
+     *
+     * @throws Exception MockMvc実行時の例外
+     */
+    @Test
+    void createReturnsBadRequestWhenExercisesIsEmpty()
+            throws Exception {
+
+        String requestBody = """
+                {
+                    "userId": 1,
+                    "exercises": []
+                }
+                """;
+
+        mockMvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/workouts")
+                        .contentType(
+                                org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .status().isBadRequest());
+
+        verify(workoutService, never()).create(any());
+    }
+
+    /**
+     * exercisesにnull要素が含まれる場合に、
+     * 400エラーになることを確認する。
+     *
+     * @throws Exception MockMvc実行時の例外
+     */
+    @Test
+    void createReturnsBadRequestWhenExercisesContainsNull()
+            throws Exception {
+
+        String requestBody = """
+                {
+                    "userId": 1,
+                    "exercises": [
+                        null
+                    ]
+                }
+                """;
+
+        mockMvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/workouts")
+                        .contentType(
+                                org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .status().isBadRequest());
+
+        verifyNoInteractions(workoutService);
+    }
+
+    /**
+     * exerciseIdがnullの場合に、
+     * ネストしたバリデーションが実行されて
+     * 400エラーになることを確認する。
+     *
+     * @throws Exception MockMvc実行時の例外
+     */
+    @Test
+    void createReturnsBadRequestWhenExerciseIdIsNull()
+            throws Exception {
+
+        String requestBody = """
+                {
+                    "userId": 1,
+                    "exercises": [
+                        {
+                            "exerciseId": null,
+                            "note": "test",
+                            "sets": [
+                                {
+                                    "setNumber": 1,
+                                    "weightKg": 50.00,
+                                    "reps": 10
+                                }
+                            ]
+                        }
+                    ]
+                }
+                """;
+
+        mockMvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/workouts")
+                        .contentType(
+                                org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .status().isBadRequest());
+
+        verify(workoutService, never()).create(any());
+    }
+
+    /**
+     * setsがnullの場合に、
+     * ネストしたバリデーションが実行されて
+     * 400エラーになることを確認する。
+     *
+     * @throws Exception MockMvc実行時の例外
+     */
+    @Test
+    void createReturnsBadRequestWhenSetsIsNull()
+            throws Exception {
+
+        String requestBody = """
+                {
+                    "userId": 1,
+                    "exercises": [
+                        {
+                            "exerciseId": 1,
+                            "note": "test",
+                            "sets": null
+                        }
+                    ]
+                }
+                """;
+
+        mockMvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/workouts")
+                        .contentType(
+                                org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .status().isBadRequest());
+
+        verify(workoutService, never()).create(any());
+    }
+
+    /**
+     * setsが空の場合に、
+     * ネストしたバリデーションが実行されて
+     * 400エラーになることを確認する。
+     *
+     * @throws Exception MockMvc実行時の例外
+     */
+    @Test
+    void createReturnsBadRequestWhenSetsIsEmpty()
+            throws Exception {
+
+        String requestBody = """
+                {
+                    "userId": 1,
+                    "exercises": [
+                        {
+                            "exerciseId": 1,
+                            "note": "test",
+                            "sets": []
+                        }
+                    ]
+                }
+                """;
+
+        mockMvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/workouts")
+                        .contentType(
+                                org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .status().isBadRequest());
+
+        verify(workoutService, never()).create(any());
+    }
+
+    /**
+     * setsにnull要素が含まれる場合に、
+     * 400エラーになることを確認する。
+     *
+     * @throws Exception MockMvc実行時の例外
+     */
+    @Test
+    void createReturnsBadRequestWhenSetsContainsNull()
+            throws Exception {
+
+        String requestBody = """
+                {
+                    "userId": 1,
+                    "exercises": [
+                        {
+                            "exerciseId": 1,
+                            "note": "test",
+                            "sets": [
+                                null
+                            ]
+                        }
+                    ]
+                }
+                """;
+
+        mockMvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/workouts")
+                        .contentType(
+                                org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .status().isBadRequest());
+
+        verifyNoInteractions(workoutService);
+    }
+
+    /**
+     * weightKgがnullの場合に、
+     * ネストしたバリデーションが実行されて
+     * 400エラーになることを確認する。
+     *
+     * @throws Exception MockMvc実行時の例外
+     */
+    @Test
+    void createReturnsBadRequestWhenWeightKgIsNull()
+            throws Exception {
+
+        String requestBody = """
+                {
+                    "userId": 1,
+                    "exercises": [
+                        {
+                            "exerciseId": 1,
+                            "note": "test",
+                            "sets": [
+                                {
+                                    "setNumber": 1,
+                                    "weightKg": null,
+                                    "reps": 10
+                                }
+                            ]
+                        }
+                    ]
+                }
+                """;
+
+        mockMvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/workouts")
+                        .contentType(
+                                org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .status().isBadRequest());
+
+        verify(workoutService, never()).create(any());
+    }
+
+    /**
+     * weightKgが0の場合に、
+     * DecimalMinのバリデーションによって
+     * 400エラーになることを確認する。
+     *
+     * @throws Exception MockMvc実行時の例外
+     */
+    @Test
+    void createReturnsBadRequestWhenWeightKgIsZero()
+            throws Exception {
+
+        String requestBody = """
+                {
+                    "userId": 1,
+                    "exercises": [
+                        {
+                            "exerciseId": 1,
+                            "note": "test",
+                            "sets": [
+                                {
+                                    "setNumber": 1,
+                                    "weightKg": 0,
+                                    "reps": 10
+                                }
+                            ]
+                        }
+                    ]
+                }
+                """;
+
+        mockMvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/workouts")
+                        .contentType(
+                                org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .status().isBadRequest());
+
+        verify(workoutService, never()).create(any());
     }
 
     /**
@@ -159,7 +730,7 @@ class WorkoutControllerTest {
      * @throws Exception MockMvc実行時の例外
      */
     @Test
-    void findHistory_履歴が存在する場合_履歴一覧を返す()
+    void findHistoryReturnsHistoryWhenHistoryExists()
             throws Exception {
 
         overload_api.service.dto.WorkoutHistorySetResponse set =
@@ -216,6 +787,9 @@ class WorkoutControllerTest {
                         org.springframework.test.web.servlet.result.MockMvcResultMatchers
                                 .jsonPath("$[0].sets[0].reps")
                                 .value(10));
+
+        verify(workoutService)
+                .findHistoryByUserId(1L);
     }
 
     /**
@@ -225,7 +799,7 @@ class WorkoutControllerTest {
      * @throws Exception MockMvc実行時の例外
      */
     @Test
-    void findHistory_履歴が存在しない場合_空のリストを返す()
+    void findHistoryReturnsEmptyListWhenHistoryDoesNotExist()
             throws Exception {
 
         when(workoutService.findHistoryByUserId(9999L))
@@ -241,5 +815,8 @@ class WorkoutControllerTest {
                 .andExpect(
                         org.springframework.test.web.servlet.result.MockMvcResultMatchers
                                 .jsonPath("$.length()").value(0));
+
+        verify(workoutService)
+                .findHistoryByUserId(9999L);
     }
 }

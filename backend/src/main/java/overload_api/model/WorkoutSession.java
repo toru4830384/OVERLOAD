@@ -98,5 +98,5 @@ public class WorkoutSession {
     public void setFinishedAt(LocalDateTime finishedAt) {
         this.finishedAt = finishedAt;
     }
-    
+
 }

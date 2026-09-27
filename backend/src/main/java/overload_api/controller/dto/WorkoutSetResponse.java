@@ -3,7 +3,7 @@ package overload_api.controller.dto;
 import java.math.BigDecimal;
 
 /**
- * ワークアウトセット登録APIのレスポンス情報を保持するDTO。
+ * ワークアウトセットAPIのレスポンス情報を保持するDTO。
  */
 public class WorkoutSetResponse {
 
@@ -21,6 +21,11 @@ public class WorkoutSetResponse {
      * 種目のID。
      */
     private Long exerciseId;
+
+    /**
+     * 種目の実施順。
+     */
+    private Integer exerciseOrder;
 
     /**
      * セット番号。
@@ -94,6 +99,24 @@ public class WorkoutSetResponse {
      */
     public void setExerciseId(Long exerciseId) {
         this.exerciseId = exerciseId;
+    }
+
+    /**
+     * 種目の実施順を取得する。
+     *
+     * @return 種目の実施順
+     */
+    public Integer getExerciseOrder() {
+        return exerciseOrder;
+    }
+
+    /**
+     * 種目の実施順を設定する。
+     *
+     * @param exerciseOrder 種目の実施順
+     */
+    public void setExerciseOrder(Integer exerciseOrder) {
+        this.exerciseOrder = exerciseOrder;
     }
 
     /**
