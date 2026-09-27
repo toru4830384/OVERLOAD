@@ -35,7 +35,11 @@ public class WorkoutSetRequest {
 
     /**
      * 回数。
+     *
+     * @NotNullにより、回数が未入力でないことを検証する。
+     * @Minにより、回数が1以上であることを検証する。
      */
+    @NotNull(message = "回数は必須です")
     @Min(value = 1, message = "回数は0より大きい値を入力してください")
     private Integer reps;
 
