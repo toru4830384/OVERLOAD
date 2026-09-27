@@ -11,10 +11,15 @@ import jakarta.validation.constraints.NotNull;
  */
 public class WorkoutSetRequest {
 
-    /**
-     * セット番号。
-     */
-    private Integer setNumber;
+	/**
+	 * セット番号。
+	 *
+	 * @NotNullにより、セット番号が未入力でないことを検証する。
+	 * @Minにより、セット番号が1以上であることを検証する。
+	 */
+	@NotNull(message = "セット番号は必須です")
+	@Min(value = 1, message = "セット番号は1以上の値を入力してください")
+	private Integer setNumber;
 
     /**
      * 重量（kg）。
