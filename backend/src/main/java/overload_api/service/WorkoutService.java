@@ -1,5 +1,6 @@
 package overload_api.service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -62,6 +63,8 @@ public class WorkoutService {
 
         WorkoutSession workoutSession = new WorkoutSession();
         workoutSession.setUserId(request.getUserId());
+        workoutSession.setStartedAt(LocalDateTime.now());
+
         workoutSessionMapper.insert(workoutSession);
 
         Long sessionId = workoutSession.getId();
