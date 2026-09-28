@@ -1,5 +1,6 @@
 package overload_api.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -59,29 +60,26 @@ public class WorkoutService {
      * @param request ワークアウト登録リクエスト
      * @return 登録したワークアウトセット一覧
      * @throws ResourceNotFoundException ユーザーまたは種目が存在しない場合
-     * @throws IllegalArgumentException セット情報が存在しない場合
+     * @throws IllegalArgumentException 必須項目や種目・セット情報が不正な場合
      */
     @Transactional
     public List<WorkoutSet> create(WorkoutRequest request) {
+        if (request == null || request.getUserId() == null) {
+            throw new IllegalArgumentException("Workout request and user ID are required");
+        }
         if (userMapper.findById(request.getUserId()) == null) {
             throw new ResourceNotFoundException("User not found");
         }
 
-        /*
-         * セッションを登録する前に、
-         * 全ての種目とセット情報が有効であることを確認する。
-         */
+        // Controller以外からの呼び出しでも、不正な入力では登録しない。
+        validateExercises(request.getExercises());
+
+        // 全ての種目の存在を確認してから書き込みを開始する。
         for (WorkoutExerciseRequest exerciseRequest : request.getExercises()) {
             if (exerciseMapper.findById(
                     exerciseRequest.getExerciseId()) == null) {
                 throw new ResourceNotFoundException(
                         "Exercise not found");
-            }
-
-            if (exerciseRequest.getSets() == null
-                    || exerciseRequest.getSets().isEmpty()) {
-                throw new IllegalArgumentException(
-                        "Workout sets must not be null or empty");
             }
         }
 
@@ -131,6 +129,35 @@ public class WorkoutService {
         workoutSessionMapper.updateFinishedAt(sessionId);
 
         return workoutSets;
+    }
+
+    /**
+     * 種目とセットの必須項目および数値の下限を検証する。
+     *
+     * @param exercises 登録する種目一覧
+     * @throws IllegalArgumentException 入力が不正な場合
+     */
+    private void validateExercises(List<WorkoutExerciseRequest> exercises) {
+        if (exercises == null || exercises.isEmpty()) {
+            throw new IllegalArgumentException("Workout exercises must not be null or empty");
+        }
+        for (WorkoutExerciseRequest exercise : exercises) {
+            if (exercise == null || exercise.getExerciseId() == null) {
+                throw new IllegalArgumentException("Workout exercise and exercise ID are required");
+            }
+            if (exercise.getSets() == null || exercise.getSets().isEmpty()) {
+                throw new IllegalArgumentException("Workout sets must not be null or empty");
+            }
+            for (WorkoutSetRequest set : exercise.getSets()) {
+                if (set == null || set.getSetNumber() == null || set.getSetNumber() < 1
+                        || set.getReps() == null || set.getReps() < 1
+                        || set.getWeightKg() == null
+                        || set.getWeightKg().compareTo(new BigDecimal("0.01")) < 0) {
+                    throw new IllegalArgumentException(
+                            "Each workout set requires setNumber >= 1, reps >= 1 and weightKg >= 0.01");
+                }
+            }
+        }
     }
 
     /**

@@ -98,7 +98,7 @@ class WorkoutSetRequestTest {
                         .annotationType());
 
         assertEquals(
-                "重量は0より大きい値を入力してください",
+                "重量は0.01kg以上の値を入力してください",
                 violation.getMessage());
     }
 
@@ -278,4 +278,15 @@ class WorkoutSetRequestTest {
 
         return request;
     }
+    /** 正の値でも0.01kg未満なら、実際の下限を示すエラーを返す。 */
+    @Test
+    void validationRejectsWeightBelowMinimumWithAccurateMessage() {
+        WorkoutSetRequest request = createValidRequest();
+        request.setWeightKg(new BigDecimal("0.001"));
+        var violations = validator.validate(request);
+        assertEquals(1, violations.size());
+        assertEquals("重量は0.01kg以上の値を入力してください",
+                violations.iterator().next().getMessage());
+    }
+
 }

@@ -1,6 +1,8 @@
 package overload_api.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.mockito.ArgumentCaptor;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -819,4 +821,40 @@ class WorkoutControllerTest {
         verify(workoutService)
                 .findHistoryByUserId(9999L);
     }
+    /** 複数種目・セットの値と順序がService DTOへ欠落なく渡ることを確認する。 */
+    @Test
+    void createPassesAllRequestFieldsToServiceInOrder() throws Exception {
+        when(workoutService.create(any())).thenReturn(List.of());
+        String body = """
+                {"userId":42,"exercises":[
+                  {"exerciseId":7,"note":"first","sets":[
+                    {"setNumber":1,"weightKg":50.25,"reps":10},
+                    {"setNumber":2,"weightKg":55.50,"reps":8}]},
+                  {"exerciseId":9,"note":"second","sets":[
+                    {"setNumber":1,"weightKg":80.75,"reps":6}]}]}
+                """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .post("/api/workouts")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(body))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .status().isCreated());
+        var captor = ArgumentCaptor.forClass(overload_api.service.dto.WorkoutRequest.class);
+        verify(workoutService).create(captor.capture());
+        var request = captor.getValue();
+        assertEquals(42L, request.getUserId());
+        assertEquals(List.of(7L, 9L), request.getExercises().stream()
+                .map(overload_api.service.dto.WorkoutExerciseRequest::getExerciseId).toList());
+        assertEquals(List.of("first", "second"), request.getExercises().stream()
+                .map(overload_api.service.dto.WorkoutExerciseRequest::getNote).toList());
+        assertEquals(List.of(2, 1), request.getExercises().stream()
+                .map(exercise -> exercise.getSets().size()).toList());
+        var sets = request.getExercises().stream().flatMap(exercise -> exercise.getSets().stream()).toList();
+        assertEquals(List.of(1, 2, 1), sets.stream()
+                .map(overload_api.service.dto.WorkoutSetRequest::getSetNumber).toList());
+        assertEquals(List.of(new BigDecimal("50.25"), new BigDecimal("55.50"), new BigDecimal("80.75")),
+                sets.stream().map(overload_api.service.dto.WorkoutSetRequest::getWeightKg).toList());
+        assertEquals(List.of(10, 8, 6), sets.stream()
+                .map(overload_api.service.dto.WorkoutSetRequest::getReps).toList());
+    }
+
 }

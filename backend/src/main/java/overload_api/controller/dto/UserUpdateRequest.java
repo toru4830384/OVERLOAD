@@ -23,7 +23,7 @@ public class UserUpdateRequest {
     /**
      * 年齢。
      *
-     * @Minにより、年齢が0以上であることを検証する。
+     * {@code @Min} により、年齢が0以上であることを検証する。
      */
     @Min(
             value = 0,
@@ -33,7 +33,7 @@ public class UserUpdateRequest {
     /**
      * 体重（kg）。
      *
-     * @DecimalMinにより、
+     * {@code @DecimalMin} により、
      * 体重が0より大きい値であることを検証する。
      */
     @DecimalMin(

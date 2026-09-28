@@ -89,6 +89,7 @@ public interface WorkoutSetMapper {
         WHERE wss.user_id = #{userId}
         ORDER BY
             wss.started_at DESC,
+            wss.id DESC,
             ws.exercise_order,
             ws.set_number
         """)

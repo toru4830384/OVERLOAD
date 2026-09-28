@@ -1,13 +1,12 @@
 package overload_api;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
+import overload_api.support.MySqlIntegrationTest;
 
 /**
  * アプリケーション全体のSpringコンテキスト起動を確認するテストクラス。
  */
-@SpringBootTest
-class OverloadApiApplicationTests {
+class OverloadApiApplicationTests extends MySqlIntegrationTest {
 
     /**
      * Springのアプリケーションコンテキストが

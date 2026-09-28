@@ -25,8 +25,8 @@ public class WorkoutExerciseRequest {
     /**
      * 種目に対して実施したセットの一覧。
      *
-     * @NotEmptyにより、セット一覧自体がnullまたは空にならないことを検証する。
-     * @Validにより、セット一覧内の各セットの入力値を検証する。
+     * {@code @NotEmpty} により、セット一覧自体がnullまたは空にならないことを検証する。
+     * {@code @Valid} により、セット一覧内の各セットの入力値を検証する。
      */
     @NotEmpty
     @Valid

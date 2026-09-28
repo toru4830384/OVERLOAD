@@ -1,5 +1,6 @@
 package overload_api.mapper;
 
+import static overload_api.support.DatabaseFixtures.insert;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -10,19 +11,16 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 
 import overload_api.mapper.dto.WorkoutHistoryRow;
 import overload_api.model.WorkoutSet;
+import overload_api.support.MySqlIntegrationTest;
 
 /**
  * WorkoutSetMapperのデータベースアクセスを確認するテストクラス。
  */
-@SpringBootTest
-@ActiveProfiles("test")
-class WorkoutSetMapperTest {
+class WorkoutSetMapperTest extends MySqlIntegrationTest {
 
     /**
      * テスト対象のWorkoutSetMapper。
@@ -263,13 +261,37 @@ class WorkoutSetMapperTest {
                 result.get(2).getNote());
     }
 
+    /** 同時刻のセッションを分離し、日時降順とユーザー絞り込みも確認する。 */
+    @Test
+    void findHistoryKeepsTiedSessionsTogetherAndFiltersOtherUsers() {
+        Long userId = insertUser();
+        Long otherUserId = insertUser();
+        Long exerciseId = insertExercise("test", "test");
+        var time = LocalDateTime.of(2026, 9, 27, 12, 0);
+        Long older = insertWorkoutSession(userId, time.minusDays(1));
+        Long first = insertWorkoutSession(userId, time);
+        Long second = insertWorkoutSession(userId, time);
+        Long other = insertWorkoutSession(otherUserId, time.plusDays(1));
+        insertWorkoutSet(first, exerciseId, 2, 1, new BigDecimal("50"), 10, "first-2");
+        insertWorkoutSet(second, exerciseId, 2, 1, new BigDecimal("50"), 10, "second-2");
+        insertWorkoutSet(first, exerciseId, 1, 1, new BigDecimal("50"), 10, "first-1");
+        insertWorkoutSet(second, exerciseId, 1, 1, new BigDecimal("50"), 10, "second-1");
+        insertWorkoutSet(older, exerciseId, 1, 1, new BigDecimal("50"), 10, "older");
+        insertWorkoutSet(other, exerciseId, 1, 1, new BigDecimal("50"), 10, "other-user");
+        var rows = workoutSetMapper.findHistoryByUserId(userId);
+        assertEquals(List.of(second, second, first, first, older),
+                rows.stream().map(WorkoutHistoryRow::getSessionId).toList());
+        assertEquals(List.of("second-1", "second-2", "first-1", "first-2", "older"),
+                rows.stream().map(WorkoutHistoryRow::getNote).toList());
+    }
+
     /**
      * テスト用ユーザーを登録する。
      *
      * @return 登録したユーザーID
      */
     private Long insertUser() {
-        jdbcTemplate.update("""
+        return insert(jdbcTemplate, """
                 INSERT INTO users (
                     name,
                     gender,
@@ -282,10 +304,6 @@ class WorkoutSetMapperTest {
                 "男性",
                 27,
                 new BigDecimal("70.00"));
-
-        return jdbcTemplate.queryForObject(
-                "SELECT LAST_INSERT_ID()",
-                Long.class);
     }
 
     /**
@@ -299,7 +317,7 @@ class WorkoutSetMapperTest {
             String name,
             String category) {
 
-        jdbcTemplate.update("""
+        return insert(jdbcTemplate, """
                 INSERT INTO exercises (
                     name,
                     category,
@@ -314,10 +332,6 @@ class WorkoutSetMapperTest {
                 false,
                 "テスト器具",
                 "テスト動作");
-
-        return jdbcTemplate.queryForObject(
-                "SELECT LAST_INSERT_ID()",
-                Long.class);
     }
 
     /**
@@ -331,7 +345,7 @@ class WorkoutSetMapperTest {
             Long userId,
             LocalDateTime startedAt) {
 
-        jdbcTemplate.update("""
+        return insert(jdbcTemplate, """
                 INSERT INTO workout_sessions (
                     user_id,
                     started_at
@@ -340,10 +354,6 @@ class WorkoutSetMapperTest {
                 """,
                 userId,
                 startedAt);
-
-        return jdbcTemplate.queryForObject(
-                "SELECT LAST_INSERT_ID()",
-                Long.class);
     }
 
     /**

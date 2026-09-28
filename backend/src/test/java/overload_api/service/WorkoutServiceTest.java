@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
 import overload_api.exception.ResourceNotFoundException;
@@ -223,7 +225,7 @@ class WorkoutServiceTest {
                 "Workout sets must not be null or empty",
                 exception.getMessage());
 
-        verify(exerciseMapper, times(1))
+        verify(exerciseMapper, never())
                 .findById(1L);
 
         verify(workoutSessionMapper, never())
@@ -292,7 +294,7 @@ class WorkoutServiceTest {
                 "Workout sets must not be null or empty",
                 exception.getMessage());
 
-        verify(exerciseMapper, times(1))
+        verify(exerciseMapper, never())
                 .findById(1L);
 
         verify(workoutSessionMapper, never())
@@ -1268,4 +1270,60 @@ class WorkoutServiceTest {
         assertNotNull(result);
         assertEquals(0, result.size());
     }
+    /** Serviceを直接呼ぶ場合も、不正入力では書き込みが一度も起きない。 */
+    @ParameterizedTest
+    @ValueSource(strings = {"requestNull", "userNull", "exercisesNull", "exercisesEmpty",
+            "exerciseNull", "exerciseIdNull", "setsNull", "setsEmpty", "setNull",
+            "numberNull", "numberZero", "numberNegative", "repsNull", "repsZero", "repsNegative",
+            "weightNull", "weightZero", "weightNegative", "weightBelowMinimum", "invalidSecondExercise"})
+    void createRejectsInvalidInputBeforeWriting(String scenario) {
+        var sessions = mock(WorkoutSessionMapper.class);
+        var sets = mock(WorkoutSetMapper.class);
+        var users = mock(UserMapper.class);
+        var exercises = mock(ExerciseMapper.class);
+        when(users.findById(1L)).thenReturn(new User());
+        when(exercises.findById(1L)).thenReturn(new overload_api.model.Exercise());
+        var service = new WorkoutService(sessions, sets, users, exercises);
+        var set = new WorkoutSetRequest();
+        set.setSetNumber(1);
+        set.setReps(1);
+        set.setWeightKg(new BigDecimal("0.01"));
+        var exercise = new WorkoutExerciseRequest();
+        exercise.setExerciseId(1L);
+        exercise.setSets(List.of(set));
+        var request = new WorkoutRequest();
+        request.setUserId(1L);
+        request.setExercises(List.of(exercise));
+        switch (scenario) {
+            case "userNull" -> request.setUserId(null);
+            case "exercisesNull" -> request.setExercises(null);
+            case "exercisesEmpty" -> request.setExercises(List.of());
+            case "exerciseNull" -> request.setExercises(java.util.Arrays.asList((WorkoutExerciseRequest) null));
+            case "exerciseIdNull" -> exercise.setExerciseId(null);
+            case "setsNull" -> exercise.setSets(null);
+            case "setsEmpty" -> exercise.setSets(List.of());
+            case "setNull" -> exercise.setSets(java.util.Arrays.asList((WorkoutSetRequest) null));
+            case "numberNull" -> set.setSetNumber(null);
+            case "numberZero" -> set.setSetNumber(0);
+            case "numberNegative" -> set.setSetNumber(-1);
+            case "repsNull" -> set.setReps(null);
+            case "repsZero" -> set.setReps(0);
+            case "repsNegative" -> set.setReps(-1);
+            case "weightNull" -> set.setWeightKg(null);
+            case "weightZero" -> set.setWeightKg(BigDecimal.ZERO);
+            case "weightNegative" -> set.setWeightKg(new BigDecimal("-1"));
+            case "weightBelowMinimum" -> set.setWeightKg(new BigDecimal("0.001"));
+            case "invalidSecondExercise" -> {
+                var invalid = new WorkoutExerciseRequest();
+                invalid.setExerciseId(1L);
+                invalid.setSets(List.of());
+                request.setExercises(List.of(exercise, invalid));
+            }
+            default -> { }
+        }
+        assertThrows(IllegalArgumentException.class,
+                () -> service.create(scenario.equals("requestNull") ? null : request));
+        org.mockito.Mockito.verifyNoInteractions(sessions, sets);
+    }
+
 }

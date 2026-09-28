@@ -14,8 +14,8 @@ public class WorkoutSetRequest {
 	/**
 	 * セット番号。
 	 *
-	 * @NotNullにより、セット番号が未入力でないことを検証する。
-	 * @Minにより、セット番号が1以上であることを検証する。
+	 * {@code @NotNull} により、セット番号が未入力でないことを検証する。
+	 * {@code @Min} により、セット番号が1以上であることを検証する。
 	 */
 	@NotNull(message = "セット番号は必須です")
 	@Min(value = 1, message = "セット番号は1以上の値を入力してください")
@@ -24,20 +24,20 @@ public class WorkoutSetRequest {
     /**
      * 重量（kg）。
      *
-     * @NotNullにより、重量が未入力でないことを検証する。
-     * @DecimalMinにより、重量が0.01kg以上であることを検証する。
+     * {@code @NotNull} により、重量が未入力でないことを検証する。
+     * {@code @DecimalMin} により、重量が0.01kg以上であることを検証する。
      */
     @NotNull
     @DecimalMin(
             value = "0.01",
-            message = "重量は0より大きい値を入力してください")
+            message = "重量は0.01kg以上の値を入力してください")
     private BigDecimal weightKg;
 
     /**
      * 回数。
      *
-     * @NotNullにより、回数が未入力でないことを検証する。
-     * @Minにより、回数が1以上であることを検証する。
+     * {@code @NotNull} により、回数が未入力でないことを検証する。
+     * {@code @Min} により、回数が1以上であることを検証する。
      */
     @NotNull(message = "回数は必須です")
     @Min(value = 1, message = "回数は0より大きい値を入力してください")
