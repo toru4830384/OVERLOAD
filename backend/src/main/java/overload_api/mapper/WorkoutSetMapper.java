@@ -1,0 +1,97 @@
+package overload_api.mapper;
+
+import java.util.List;
+
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Options;
+import org.apache.ibatis.annotations.Select;
+
+import overload_api.mapper.dto.WorkoutHistoryRow;
+import overload_api.model.WorkoutSet;
+
+/**
+ * ワークアウトセット情報をデータベースから取得・登録するMapper。
+ */
+@Mapper
+public interface WorkoutSetMapper {
+
+    /**
+     * 全てのワークアウトセットを取得する。
+     *
+     * @return ワークアウトセット一覧
+     */
+    @Select("""
+        SELECT
+            id,
+            session_id AS sessionId,
+            exercise_id AS exerciseId,
+            exercise_order AS exerciseOrder,
+            set_number AS setNumber,
+            weight_kg AS weightKg,
+            reps,
+            note
+        FROM workout_sets
+        ORDER BY session_id, exercise_order, set_number
+        """)
+    List<WorkoutSet> findAll();
+
+    /**
+     * ワークアウトセットを登録する。
+     *
+     * @param workoutSet 登録するワークアウトセット情報
+     */
+    @Insert("""
+        INSERT INTO workout_sets (
+            session_id,
+            exercise_id,
+            exercise_order,
+            set_number,
+            weight_kg,
+            reps,
+            note
+        )
+        VALUES (
+            #{sessionId},
+            #{exerciseId},
+            #{exerciseOrder},
+            #{setNumber},
+            #{weightKg},
+            #{reps},
+            #{note}
+        )
+        """)
+    @Options(useGeneratedKeys = true, keyProperty = "id")
+    void insert(WorkoutSet workoutSet);
+
+    /**
+     * 指定されたユーザーのワークアウト履歴を取得する。
+     *
+     * @param userId ユーザーID
+     * @return ワークアウト履歴一覧
+     */
+    @Select("""
+        SELECT
+            ws.session_id AS sessionId,
+            wss.started_at AS startedAt,
+            ws.exercise_id AS exerciseId,
+            e.name AS exerciseName,
+            ws.exercise_order AS exerciseOrder,
+            ws.set_number AS setNumber,
+            ws.weight_kg AS weightKg,
+            ws.reps,
+            ws.note
+        FROM workout_sets ws
+        INNER JOIN workout_sessions wss
+            ON ws.session_id = wss.id
+        INNER JOIN exercises e
+            ON ws.exercise_id = e.id
+        WHERE wss.user_id = #{userId}
+        ORDER BY
+            wss.started_at DESC,
+            wss.id DESC,
+            ws.exercise_order,
+            ws.set_number
+        """)
+    List<WorkoutHistoryRow> findHistoryByUserId(Long userId);
+}
