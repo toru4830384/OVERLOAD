@@ -126,7 +126,9 @@ public class WorkoutService {
             }
         }
 
-        workoutSessionMapper.updateFinishedAt(sessionId);
+        workoutSessionMapper.updateFinishedAt(
+                sessionId,
+                LocalDateTime.now());
 
         return workoutSets;
     }

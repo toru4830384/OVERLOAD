@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -166,7 +167,7 @@ class WorkoutServiceTest {
                 .insert(any(WorkoutSet.class));
 
         verify(workoutSessionMapper, times(1))
-                .updateFinishedAt(100L);
+                .updateFinishedAt(eq(100L), any(LocalDateTime.class));
     }
 
     /**
@@ -235,7 +236,7 @@ class WorkoutServiceTest {
                 .insert(any(WorkoutSet.class));
 
         verify(workoutSessionMapper, never())
-                .updateFinishedAt(anyLong());
+                .updateFinishedAt(anyLong(), any(LocalDateTime.class));
     }
 
     /**
@@ -304,7 +305,7 @@ class WorkoutServiceTest {
                 .insert(any(WorkoutSet.class));
 
         verify(workoutSessionMapper, never())
-                .updateFinishedAt(anyLong());
+                .updateFinishedAt(anyLong(), any(LocalDateTime.class));
     }
 
     /**
@@ -359,7 +360,7 @@ class WorkoutServiceTest {
                 .insert(any(WorkoutSet.class));
 
         verify(workoutSessionMapper, never())
-                .updateFinishedAt(anyLong());
+                .updateFinishedAt(anyLong(), any(LocalDateTime.class));
     }
 
     /**
@@ -441,7 +442,7 @@ class WorkoutServiceTest {
                 .insert(any(WorkoutSet.class));
 
         verify(workoutSessionMapper, never())
-                .updateFinishedAt(anyLong());
+                .updateFinishedAt(anyLong(), any(LocalDateTime.class));
     }
 
     /**
@@ -592,7 +593,7 @@ class WorkoutServiceTest {
                 .insert(any(WorkoutSet.class));
 
         verify(workoutSessionMapper, times(1))
-                .updateFinishedAt(101L);
+                .updateFinishedAt(eq(101L), any(LocalDateTime.class));
     }
 
     /**
@@ -756,7 +757,7 @@ class WorkoutServiceTest {
                 .insert(any(WorkoutSet.class));
 
         verify(workoutSessionMapper, times(1))
-                .updateFinishedAt(101L);
+                .updateFinishedAt(eq(101L), any(LocalDateTime.class));
     }
 
     /**

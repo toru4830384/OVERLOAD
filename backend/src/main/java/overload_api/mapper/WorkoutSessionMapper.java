@@ -2,6 +2,9 @@ package overload_api.mapper;
 
 import java.util.List;
 
+import java.time.LocalDateTime;
+
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
@@ -54,12 +57,15 @@ public interface WorkoutSessionMapper {
      * 指定されたワークアウトセッションの終了日時を更新する。
      *
      * @param id ワークアウトセッションID
+     * @param finishedAt ワークアウト終了日時
      */
     @Update("""
         UPDATE workout_sessions
-        SET finished_at = NOW()
+        SET finished_at = #{finishedAt}
         WHERE id = #{id}
         """)
-    void updateFinishedAt(Long id);
+    void updateFinishedAt(
+            @Param("id") Long id,
+            @Param("finishedAt") LocalDateTime finishedAt);
 
 }
