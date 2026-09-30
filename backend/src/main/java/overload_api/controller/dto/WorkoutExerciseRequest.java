@@ -5,6 +5,7 @@ import java.util.List;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 /**
  * ワークアウトで実施する種目のリクエスト情報を保持するDTO。
@@ -20,6 +21,9 @@ public class WorkoutExerciseRequest {
     /**
      * 種目に関するメモ。
      */
+    @Size(
+            max = 100,
+            message = "メモは100文字以内で入力してください")
     private String note;
 
     /**

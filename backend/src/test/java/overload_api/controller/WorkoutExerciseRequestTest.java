@@ -1,6 +1,7 @@
 package overload_api.controller.dto;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -199,6 +200,71 @@ class WorkoutExerciseRequestTest {
 
         assertEquals(
                 "セット番号は1以上の値を入力してください",
+                violation.getMessage());
+    }
+
+    /**
+     * noteが100文字の場合に、
+     * バリデーションエラーにならないことを確認する。
+     */
+    @Test
+    void validationSucceedsWhenNoteHas100Characters() {
+        WorkoutSetRequest setRequest =
+                new WorkoutSetRequest();
+
+        setRequest.setSetNumber(1);
+        setRequest.setWeightKg(
+                new BigDecimal("50.00"));
+        setRequest.setReps(10);
+
+        WorkoutExerciseRequest request =
+                new WorkoutExerciseRequest();
+
+        request.setExerciseId(1L);
+        request.setNote("a".repeat(100));
+        request.setSets(List.of(setRequest));
+
+        Set<ConstraintViolation<WorkoutExerciseRequest>> violations =
+                validator.validate(request);
+
+        assertTrue(violations.isEmpty());
+    }
+
+    /**
+     * noteが101文字の場合に、
+     * Sizeのバリデーションエラーになることを確認する。
+     */
+    @Test
+    void validationFailsWhenNoteHas101Characters() {
+        WorkoutSetRequest setRequest =
+                new WorkoutSetRequest();
+
+        setRequest.setSetNumber(1);
+        setRequest.setWeightKg(
+                new BigDecimal("50.00"));
+        setRequest.setReps(10);
+
+        WorkoutExerciseRequest request =
+                new WorkoutExerciseRequest();
+
+        request.setExerciseId(1L);
+        request.setNote("a".repeat(101));
+        request.setSets(List.of(setRequest));
+
+        Set<ConstraintViolation<WorkoutExerciseRequest>> violations =
+                validator.validate(request);
+
+        assertEquals(1, violations.size());
+
+        ConstraintViolation<WorkoutExerciseRequest> violation =
+                violations.iterator().next();
+
+        assertEquals(
+                "note",
+                violation.getPropertyPath().toString());
+
+        assertEquals(
+                "メモは100文字以内で入力してください",
                 violation.getMessage());
     }
 }
