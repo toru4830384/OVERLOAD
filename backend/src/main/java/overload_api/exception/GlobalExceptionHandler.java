@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.dao.DataIntegrityViolationException;
 
 /**
  * APIで発生した例外を共通して処理するハンドラー。
@@ -27,6 +28,26 @@ public class GlobalExceptionHandler {
                         e.getMessage());
 
         problemDetail.setTitle("Resource not found");
+
+        return problemDetail;
+    }
+
+    /**
+     * データベース制約違反が発生した場合の例外を処理する。
+     *
+     * @param e データベース制約違反例外
+     * @return 400エラー情報
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ProblemDetail handleDataIntegrityViolation(
+            DataIntegrityViolationException e) {
+
+        ProblemDetail problemDetail =
+                ProblemDetail.forStatusAndDetail(
+                        HttpStatus.BAD_REQUEST,
+                        "入力値が不正です");
+
+        problemDetail.setTitle("Invalid request");
 
         return problemDetail;
     }

@@ -1,14 +1,11 @@
 package overload_api.controller;
 
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.validation.Valid;
 import overload_api.controller.dto.UserUpdateRequest;
@@ -38,19 +35,10 @@ public class UserController {
      *
      * @param id ユーザーID
      * @return ユーザー情報
-     * @throws ResponseStatusException ユーザーが存在しない場合
      */
     @GetMapping("/{id}")
     public User findById(@PathVariable Long id) {
-        User user = userService.findById(id);
-
-        if (user == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "User not found");
-        }
-
-        return user;
+        return userService.findById(id);
     }
 
     /**
@@ -59,36 +47,17 @@ public class UserController {
      * @param id ユーザーID
      * @param request 更新するユーザー情報
      * @return 更新後のユーザー情報
-     * @throws ResponseStatusException DB制約違反が発生した場合、
-     *         またはユーザーが存在しない場合
      */
     @PutMapping("/{id}")
     public User update(
             @PathVariable Long id,
             @Valid @RequestBody UserUpdateRequest request) {
 
-        User user;
-
-        try {
-            user = userService.update(
-                    id,
-                    request.getName(),
-                    request.getGender(),
-                    request.getAge(),
-                    request.getBodyWeightKg());
-        } catch (DataIntegrityViolationException e) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "入力値が不正です",
-                    e);
-        }
-
-        if (user == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "User not found");
-        }
-
-        return user;
+        return userService.update(
+                id,
+                request.getName(),
+                request.getGender(),
+                request.getAge(),
+                request.getBodyWeightKg());
     }
 }

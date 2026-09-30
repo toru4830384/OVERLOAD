@@ -2,7 +2,7 @@ package overload_api.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import overload_api.mapper.UserMapper;
 import overload_api.model.User;
+import overload_api.exception.ResourceNotFoundException;
 
 /**
  * UserServiceの単体テストを行うクラス。
@@ -78,10 +79,10 @@ class UserServiceTest {
 
     /**
      * ユーザーが存在しない場合に、
-     * nullを返すことを確認する。
+     * ResourceNotFoundExceptionが発生することを確認する。
      */
     @Test
-    void findByIdReturnsNullWhenUserDoesNotExist() {
+    void findByIdThrowsResourceNotFoundExceptionWhenUserDoesNotExist() {
         UserMapper userMapper =
                 mock(UserMapper.class);
 
@@ -91,10 +92,9 @@ class UserServiceTest {
         when(userMapper.findById(9999L))
                 .thenReturn(null);
 
-        User result =
-                userService.findById(9999L);
-
-        assertNull(result);
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> userService.findById(9999L));
 
         verify(userMapper, times(1))
                 .findById(9999L);
@@ -180,10 +180,10 @@ class UserServiceTest {
 
     /**
      * ユーザーが存在しない場合に、
-     * 更新を行わずnullを返すことを確認する。
+     * 更新を行わずResourceNotFoundExceptionが発生することを確認する。
      */
     @Test
-    void updateReturnsNullWithoutUpdatingWhenUserDoesNotExist() {
+    void updateThrowsResourceNotFoundExceptionWhenUserDoesNotExist() {
         UserMapper userMapper =
                 mock(UserMapper.class);
 
@@ -193,15 +193,14 @@ class UserServiceTest {
         when(userMapper.findById(9999L))
                 .thenReturn(null);
 
-        User result =
-                userService.update(
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> userService.update(
                         9999L,
                         "存在しないユーザー",
                         "男性",
                         30,
-                        new BigDecimal("70.00"));
-
-        assertNull(result);
+                        new BigDecimal("70.00")));
 
         verify(userMapper, times(1))
                 .findById(9999L);

@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 
 import overload_api.mapper.UserMapper;
 import overload_api.model.User;
+import overload_api.exception.ResourceNotFoundException;
 
 /**
  * ユーザー情報に関する業務処理を提供するサービス。
@@ -27,9 +28,17 @@ public class UserService {
      *
      * @param id ユーザーID
      * @return ユーザー情報
+     * @throws ResourceNotFoundException ユーザーが存在しない場合
      */
     public User findById(Long id) {
-        return userMapper.findById(id);
+        User user = userMapper.findById(id);
+
+        if (user == null) {
+            throw new ResourceNotFoundException(
+                    "User not found: " + id);
+        }
+
+        return user;
     }
 
     /**
@@ -40,7 +49,8 @@ public class UserService {
      * @param gender 性別
      * @param age 年齢
      * @param bodyWeightKg 体重（kg）
-     * @return 更新後のユーザー情報。指定されたIDのユーザーが存在しない場合はnull
+     * @return 更新後のユーザー情報
+     * @throws ResourceNotFoundException ユーザーが存在しない場合
      */
     public User update(
             Long id,
@@ -48,16 +58,21 @@ public class UserService {
             String gender,
             Integer age,
             java.math.BigDecimal bodyWeightKg) {
+
         User user = userMapper.findById(id);
+
         if (user == null) {
-            return null;
+            throw new ResourceNotFoundException(
+                    "User not found: " + id);
         }
+
         user.setName(name);
         user.setGender(gender);
         user.setAge(age);
         user.setBodyWeightKg(bodyWeightKg);
+
         userMapper.update(user);
+
         return user;
     }
-
 }
