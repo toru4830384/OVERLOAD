@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import overload_api.controller.dto.WorkoutSessionResponse;
 import overload_api.model.WorkoutSession;
 import overload_api.service.WorkoutSessionService;
 
@@ -23,7 +24,8 @@ public class WorkoutSessionController {
      *
      * @param workoutSessionService ワークアウトセッション情報を扱うサービス
      */
-    public WorkoutSessionController(WorkoutSessionService workoutSessionService) {
+    public WorkoutSessionController(
+            WorkoutSessionService workoutSessionService) {
         this.workoutSessionService = workoutSessionService;
     }
 
@@ -33,7 +35,30 @@ public class WorkoutSessionController {
      * @return ワークアウトセッション一覧
      */
     @GetMapping
-    public List<WorkoutSession> findAll() {
-        return workoutSessionService.findAll();
+    public List<WorkoutSessionResponse> findAll() {
+        return workoutSessionService.findAll()
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    /**
+     * ワークアウトセッションモデルをAPIレスポンスDTOへ変換する。
+     *
+     * @param workoutSession ワークアウトセッションモデル
+     * @return ワークアウトセッションレスポンスDTO
+     */
+    private WorkoutSessionResponse toResponse(
+            WorkoutSession workoutSession) {
+
+        WorkoutSessionResponse response =
+                new WorkoutSessionResponse();
+
+        response.setId(workoutSession.getId());
+        response.setUserId(workoutSession.getUserId());
+        response.setStartedAt(workoutSession.getStartedAt());
+        response.setFinishedAt(workoutSession.getFinishedAt());
+
+        return response;
     }
 }
