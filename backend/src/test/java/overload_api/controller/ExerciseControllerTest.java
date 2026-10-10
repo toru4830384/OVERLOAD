@@ -40,7 +40,7 @@ class ExerciseControllerTest {
         when(exerciseService.findAll())
                 .thenReturn(List.of(exercise1, exercise2));
 
-        List<Exercise> result =
+        List<overload_api.controller.dto.ExerciseResponse> result =
                 exerciseController.findAll();
 
         assertNotNull(result);
@@ -70,7 +70,7 @@ class ExerciseControllerTest {
         when(exerciseService.findAll())
                 .thenReturn(List.of());
 
-        List<Exercise> result =
+        List<overload_api.controller.dto.ExerciseResponse> result =
                 exerciseController.findAll();
 
         assertNotNull(result);

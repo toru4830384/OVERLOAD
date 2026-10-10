@@ -45,7 +45,7 @@ class MuscleControllerTest {
         MuscleController muscleController =
                 new MuscleController(muscleService);
 
-        List<Muscle> result =
+        List<overload_api.controller.dto.MuscleResponse> result =
                 muscleController.findAll();
 
         assertNotNull(result);
@@ -81,7 +81,7 @@ class MuscleControllerTest {
         MuscleController muscleController =
                 new MuscleController(muscleService);
 
-        List<Muscle> result =
+        List<overload_api.controller.dto.MuscleResponse> result =
                 muscleController.findAll();
 
         assertNotNull(result);

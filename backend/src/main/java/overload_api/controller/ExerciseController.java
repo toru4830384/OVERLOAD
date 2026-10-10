@@ -6,7 +6,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import overload_api.model.Exercise;
+import overload_api.controller.dto.ExerciseResponse;
+import overload_api.controller.mapper.ExerciseApiMapper;
 import overload_api.service.ExerciseService;
 
 /**
@@ -33,8 +34,8 @@ public class ExerciseController {
      * @return 種目一覧
      */
     @GetMapping
-    public List<Exercise> findAll() {
-        return exerciseService.findAll();
+    public List<ExerciseResponse> findAll() {
+        return exerciseService.findAll().stream().map(ExerciseApiMapper::toResponse).toList();
     }
 
 }

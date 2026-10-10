@@ -9,7 +9,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 import overload_api.controller.dto.UserUpdateRequest;
-import overload_api.model.User;
+import overload_api.controller.dto.UserResponse;
+import overload_api.controller.mapper.UserApiMapper;
 import overload_api.service.UserService;
 
 /**
@@ -37,8 +38,8 @@ public class UserController {
      * @return ユーザー情報
      */
     @GetMapping("/{id}")
-    public User findById(@PathVariable Long id) {
-        return userService.findById(id);
+    public UserResponse findById(@PathVariable Long id) {
+        return UserApiMapper.toResponse(userService.findById(id));
     }
 
     /**
@@ -49,15 +50,15 @@ public class UserController {
      * @return 更新後のユーザー情報
      */
     @PutMapping("/{id}")
-    public User update(
+    public UserResponse update(
             @PathVariable Long id,
             @Valid @RequestBody UserUpdateRequest request) {
 
-        return userService.update(
+        return UserApiMapper.toResponse(userService.update(
                 id,
                 request.getName(),
                 request.getGender(),
                 request.getAge(),
-                request.getBodyWeightKg());
+                request.getBodyWeightKg()));
     }
 }

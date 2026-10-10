@@ -45,7 +45,7 @@ class ExerciseMuscleControllerTest {
                         exerciseMuscle1,
                         exerciseMuscle2));
 
-        List<ExerciseMuscle> result =
+        List<overload_api.controller.dto.ExerciseMuscleResponse> result =
                 exerciseMuscleController.findAll();
 
         assertNotNull(result);
@@ -81,7 +81,7 @@ class ExerciseMuscleControllerTest {
         when(exerciseMuscleService.findAll())
                 .thenReturn(List.of());
 
-        List<ExerciseMuscle> result =
+        List<overload_api.controller.dto.ExerciseMuscleResponse> result =
                 exerciseMuscleController.findAll();
 
         assertNotNull(result);

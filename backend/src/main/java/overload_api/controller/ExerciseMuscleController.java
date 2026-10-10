@@ -6,7 +6,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import overload_api.model.ExerciseMuscle;
+import overload_api.controller.dto.ExerciseMuscleResponse;
+import overload_api.controller.mapper.ExerciseMuscleApiMapper;
 import overload_api.service.ExerciseMuscleService;
 
 /**
@@ -33,8 +34,8 @@ public class ExerciseMuscleController {
      * @return 種目と筋肉の関連情報一覧
      */
     @GetMapping
-    public List<ExerciseMuscle> findAll() {
-        return exerciseMuscleService.findAll();
+    public List<ExerciseMuscleResponse> findAll() {
+        return exerciseMuscleService.findAll().stream().map(ExerciseMuscleApiMapper::toResponse).toList();
     }
 
 }

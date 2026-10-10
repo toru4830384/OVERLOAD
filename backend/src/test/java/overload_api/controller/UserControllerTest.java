@@ -84,7 +84,7 @@ class UserControllerTest {
         UserController userController =
                 new UserController(userService);
 
-        User result =
+        overload_api.controller.dto.UserResponse result =
                 userController.findById(1L);
 
         assertNotNull(result);
@@ -155,7 +155,7 @@ class UserControllerTest {
         request.setBodyWeightKg(
                 new BigDecimal("84.00"));
 
-        User result =
+        overload_api.controller.dto.UserResponse result =
                 userController.update(1L, request);
 
         assertNotNull(result);
