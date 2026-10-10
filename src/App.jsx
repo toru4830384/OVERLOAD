@@ -927,7 +927,7 @@ export default function Overload() {
 
   // プロフィールをJava APIへ自動保存
   useEffect(() => {
-    if (!loaded) return;
+    if (!loaded || age === "" || !Number.isInteger(Number(age)) || Number(age) < 0) return;
 
     const timer = setTimeout(async () => {
       try {
@@ -939,7 +939,7 @@ export default function Overload() {
           body: JSON.stringify({
             name: userName,
             gender: gender,
-            age: age === "" ? null : Number(age),
+            age: Number(age),
             bodyWeightKg:
               bodyWeightKg === "" ? null : Number(bodyWeightKg),
           }),
@@ -1800,15 +1800,16 @@ export default function Overload() {
               </div>
 
               <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 12, color: COLORS.steel, marginBottom: 6 }}>年齢</div>
+                <div style={{ fontSize: 12, color: COLORS.steel, marginBottom: 6 }}>年齢（必須・0歳以上）</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <input
-                    type="number" inputMode="numeric" placeholder="未設定" value={age}
-                    onChange={(e) => setAge(e.target.value === "" ? "" : Math.max(1, parseInt(e.target.value, 10) || 0))}
+                    type="number" inputMode="numeric" min="0" step="1" required placeholder="年齢を入力（必須）" value={age}
+                    onChange={(e) => setAge(e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value, 10) || 0))}
                     style={{ flex: 1, background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: 10, color: COLORS.chalk, fontSize: 14 }}
                   />
                   <span style={{ fontSize: 12, color: COLORS.steelDim }}>歳</span>
                 </div>
+                {age === "" && <div role="alert" style={{ color: COLORS.steel, fontSize: 12 }}>年齢を入力してください。入力するまでプロフィールは保存されません。</div>}
               </div>
 
               <div>

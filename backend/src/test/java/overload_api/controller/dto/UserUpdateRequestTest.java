@@ -139,6 +139,18 @@ class UserUpdateRequestTest {
         assertEquals(0, violations.size());
     }
 
+    /** 年齢未指定を拒否し、0歳を受け付ける。 */
+    @Test
+    void rejectsNullAgeAndAcceptsZero() {
+        var request = createValidRequest();
+        request.setAge(null);
+        var violations = validator.validate(request);
+        assertEquals(1, violations.size());
+        assertEquals("age", violations.iterator().next().getPropertyPath().toString());
+        request.setAge(0);
+        assertEquals(0, validator.validate(request).size());
+    }
+
     /**
      * 正常値を設定したユーザー更新リクエストを生成する。
      *

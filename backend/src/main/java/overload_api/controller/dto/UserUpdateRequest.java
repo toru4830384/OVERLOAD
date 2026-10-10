@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 
 /**
  * ユーザー情報更新時のリクエスト情報を保持するDTO。
@@ -23,8 +24,9 @@ public class UserUpdateRequest {
     /**
      * 年齢。
      *
-     * {@code @Min} により、年齢が0以上であることを検証する。
+     * {@code @NotNull} と {@code @Min} により、年齢が必須かつ0以上であることを検証する。
      */
+    @NotNull(message = "年齢は必須です")
     @Min(
             value = 0,
             message = "年齢は0以上の値を入力してください")

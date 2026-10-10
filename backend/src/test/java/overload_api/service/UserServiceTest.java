@@ -208,4 +208,16 @@ class UserServiceTest {
         verify(userMapper, never())
                 .update(org.mockito.ArgumentMatchers.any(User.class));
     }
+    /** 年齢未指定・負数をDB書き込み前に拒否する。 */
+    @Test
+    void updateRejectsMissingAndNegativeAgeBeforeWriting() {
+        var mapper = mock(UserMapper.class);
+        when(mapper.findById(1L)).thenReturn(new User());
+        var service = new UserService(mapper);
+        for (Integer age : new Integer[] {null, -1}) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> service.update(1L, "Test", "male", age, new BigDecimal("70")));
+        }
+        verify(mapper, never()).update(org.mockito.ArgumentMatchers.any(User.class));
+    }
 }

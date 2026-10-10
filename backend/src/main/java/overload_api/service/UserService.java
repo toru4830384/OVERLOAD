@@ -51,6 +51,7 @@ public class UserService {
      * @param bodyWeightKg 体重（kg）
      * @return 更新後のユーザー情報
      * @throws ResourceNotFoundException ユーザーが存在しない場合
+     * @throws IllegalArgumentException 年齢が未指定または負数の場合
      */
     public User update(
             Long id,
@@ -66,6 +67,9 @@ public class UserService {
                     "User not found: " + id);
         }
 
+        if (age == null || age < 0) {
+            throw new IllegalArgumentException("Age is required and must be non-negative");
+        }
         user.setName(name);
         user.setGender(gender);
         user.setAge(age);

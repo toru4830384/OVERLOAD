@@ -24,4 +24,17 @@ class ReviewValidationTest {
         verifyNoInteractions(service);
     }
 
+    @Test
+    void missingAndNullAgeAreRejectedBeforeService() throws Exception {
+        var service = mock(overload_api.service.UserService.class);
+        var mvc = MockMvcBuilders.standaloneSetup(new UserController(service))
+                .setControllerAdvice(new GlobalExceptionHandler()).build();
+        for (String field : new String[] {"", "\"age\":null,"}) {
+            mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/api/users/1").contentType(MediaType.APPLICATION_JSON)
+                    .content("{" + field + "\"name\":\"Test\",\"gender\":\"male\",\"bodyWeightKg\":70}"))
+                    .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(service);
+    }
 }
