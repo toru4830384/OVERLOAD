@@ -52,7 +52,16 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
     /** 正常な2セットがコミットされることを確認する。 */
     @Test
     void createCommitsSessionAndBothSets() {
-        var result = workoutService.create(validRequest());
+        var request = validRequest();
+        request.setStartedAt(java.time.OffsetDateTime.now().minusHours(1).withNano(0));
+        var result = workoutService.create(request);
+        var expectedStart = request.getStartedAt().atZoneSameInstant(java.time.ZoneId.of("Asia/Tokyo")).toLocalDateTime();
+        assertEquals(expectedStart, jdbcTemplate.queryForObject(
+                "SELECT started_at FROM workout_sessions", java.sql.Timestamp.class).toLocalDateTime());
+        var finish = jdbcTemplate.queryForObject(
+                "SELECT finished_at FROM workout_sessions", java.sql.Timestamp.class).toLocalDateTime();
+        assertTrue(java.time.Duration.between(expectedStart, finish).toMinutes() >= 59);
+        assertEquals(expectedStart, workoutService.findHistoryByUserId(request.getUserId()).get(0).getStartedAt());
         assertEquals(2, result.size());
         assertEquals(1, jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM workout_sessions WHERE finished_at IS NOT NULL", Integer.class));
@@ -145,6 +154,7 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
         exercise.setNote("Integration Test");
         exercise.setSets(List.of(firstSet, secondSet));
         WorkoutRequest request = new WorkoutRequest();
+        request.setStartedAt(java.time.OffsetDateTime.parse("2026-01-01T10:00:00+09:00"));
         request.setUserId(userId);
         request.setExercises(List.of(exercise));
         return request;

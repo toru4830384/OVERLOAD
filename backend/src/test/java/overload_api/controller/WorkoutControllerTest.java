@@ -68,6 +68,7 @@ class WorkoutControllerTest {
         String requestBody = """
                 {
                     "userId": 1,
+                    "startedAt": "2026-01-01T10:00:00+09:00",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -141,6 +142,7 @@ class WorkoutControllerTest {
         String requestBody = """
                 {
                     "userId": 1,
+                    "startedAt": "2026-01-01T10:00:00+09:00",
                     "exercises": [
                         {
                             "exerciseId": 9999,
@@ -195,6 +197,7 @@ class WorkoutControllerTest {
         String requestBody = """
                 {
                     "userId": null,
+                    "startedAt": "2026-01-01T10:00:00+09:00",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -237,6 +240,7 @@ class WorkoutControllerTest {
         String requestBody = """
                 {
                     "userId": 1,
+                    "startedAt": "2026-01-01T10:00:00+09:00",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -279,6 +283,7 @@ class WorkoutControllerTest {
         String requestBody = """
                 {
                     "userId": 1,
+                    "startedAt": "2026-01-01T10:00:00+09:00",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -321,6 +326,7 @@ class WorkoutControllerTest {
         String requestBody = """
                 {
                     "userId": 1,
+                    "startedAt": "2026-01-01T10:00:00+09:00",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -363,6 +369,7 @@ class WorkoutControllerTest {
         String requestBody = """
                 {
                     "userId": 1,
+                    "startedAt": "2026-01-01T10:00:00+09:00",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -405,6 +412,7 @@ class WorkoutControllerTest {
         String requestBody = """
                 {
                     "userId": 1,
+                    "startedAt": "2026-01-01T10:00:00+09:00",
                     "exercises": null
                 }
                 """;
@@ -435,6 +443,7 @@ class WorkoutControllerTest {
         String requestBody = """
                 {
                     "userId": 1,
+                    "startedAt": "2026-01-01T10:00:00+09:00",
                     "exercises": []
                 }
                 """;
@@ -465,6 +474,7 @@ class WorkoutControllerTest {
         String requestBody = """
                 {
                     "userId": 1,
+                    "startedAt": "2026-01-01T10:00:00+09:00",
                     "exercises": [
                         null
                     ]
@@ -498,6 +508,7 @@ class WorkoutControllerTest {
         String requestBody = """
                 {
                     "userId": 1,
+                    "startedAt": "2026-01-01T10:00:00+09:00",
                     "exercises": [
                         {
                             "exerciseId": null,
@@ -541,6 +552,7 @@ class WorkoutControllerTest {
         String requestBody = """
                 {
                     "userId": 1,
+                    "startedAt": "2026-01-01T10:00:00+09:00",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -578,6 +590,7 @@ class WorkoutControllerTest {
         String requestBody = """
                 {
                     "userId": 1,
+                    "startedAt": "2026-01-01T10:00:00+09:00",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -614,6 +627,7 @@ class WorkoutControllerTest {
         String requestBody = """
                 {
                     "userId": 1,
+                    "startedAt": "2026-01-01T10:00:00+09:00",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -653,6 +667,7 @@ class WorkoutControllerTest {
         String requestBody = """
                 {
                     "userId": 1,
+                    "startedAt": "2026-01-01T10:00:00+09:00",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -696,6 +711,7 @@ class WorkoutControllerTest {
         String requestBody = """
                 {
                     "userId": 1,
+                    "startedAt": "2026-01-01T10:00:00+09:00",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -826,7 +842,8 @@ class WorkoutControllerTest {
     void createPassesAllRequestFieldsToServiceInOrder() throws Exception {
         when(workoutService.create(any())).thenReturn(List.of());
         String body = """
-                {"userId":42,"exercises":[
+                {"userId":42,
+                    "startedAt": "2026-01-01T10:00:00+09:00","exercises":[
                   {"exerciseId":7,"note":"first","sets":[
                     {"setNumber":1,"weightKg":50.25,"reps":10},
                     {"setNumber":2,"weightKg":55.50,"reps":8}]},
@@ -841,6 +858,8 @@ class WorkoutControllerTest {
         var captor = ArgumentCaptor.forClass(overload_api.service.dto.WorkoutRequest.class);
         verify(workoutService).create(captor.capture());
         var request = captor.getValue();
+        assertEquals(java.time.OffsetDateTime.parse("2026-01-01T10:00:00+09:00").toInstant(),
+                captor.getValue().getStartedAt().toInstant());
         assertEquals(42L, request.getUserId());
         assertEquals(List.of(7L, 9L), request.getExercises().stream()
                 .map(overload_api.service.dto.WorkoutExerciseRequest::getExerciseId).toList());

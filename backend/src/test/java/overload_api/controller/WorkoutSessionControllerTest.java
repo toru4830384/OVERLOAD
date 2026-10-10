@@ -70,10 +70,10 @@ class WorkoutSessionControllerTest {
                 1L,
                 result.get(0).getUserId());
         assertEquals(
-                LocalDateTime.of(2026, 9, 29, 10, 0),
+                LocalDateTime.of(2026, 9, 29, 10, 0).atOffset(java.time.ZoneOffset.ofHours(9)),
                 result.get(0).getStartedAt());
         assertEquals(
-                LocalDateTime.of(2026, 9, 29, 11, 0),
+                LocalDateTime.of(2026, 9, 29, 11, 0).atOffset(java.time.ZoneOffset.ofHours(9)),
                 result.get(0).getFinishedAt());
 
         assertEquals(
@@ -83,10 +83,10 @@ class WorkoutSessionControllerTest {
                 1L,
                 result.get(1).getUserId());
         assertEquals(
-                LocalDateTime.of(2026, 9, 29, 12, 0),
+                LocalDateTime.of(2026, 9, 29, 12, 0).atOffset(java.time.ZoneOffset.ofHours(9)),
                 result.get(1).getStartedAt());
         assertEquals(
-                LocalDateTime.of(2026, 9, 29, 13, 0),
+                LocalDateTime.of(2026, 9, 29, 13, 0).atOffset(java.time.ZoneOffset.ofHours(9)),
                 result.get(1).getFinishedAt());
 
         verify(workoutSessionService, times(1))

@@ -1,6 +1,6 @@
 package overload_api.controller.dto;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * ワークアウトセッションAPIのレスポンス情報を保持するDTO。
@@ -18,14 +18,14 @@ public class WorkoutSessionResponse {
     private Long userId;
 
     /**
-     * ワークアウト開始日時。
+     * ワークアウト開始日時（UTCオフセット付き）。
      */
-    private LocalDateTime startedAt;
+    private OffsetDateTime startedAt;
 
     /**
-     * ワークアウト終了日時。
+     * ワークアウト終了日時（UTCオフセット付き）。未終了の場合はnull。
      */
-    private LocalDateTime finishedAt;
+    private OffsetDateTime finishedAt;
 
     /**
      * ワークアウトセッションIDを取得する。
@@ -68,7 +68,7 @@ public class WorkoutSessionResponse {
      *
      * @return ワークアウト開始日時
      */
-    public LocalDateTime getStartedAt() {
+    public OffsetDateTime getStartedAt() {
         return startedAt;
     }
 
@@ -77,7 +77,7 @@ public class WorkoutSessionResponse {
      *
      * @param startedAt ワークアウト開始日時
      */
-    public void setStartedAt(LocalDateTime startedAt) {
+    public void setStartedAt(OffsetDateTime startedAt) {
         this.startedAt = startedAt;
     }
 
@@ -86,7 +86,7 @@ public class WorkoutSessionResponse {
      *
      * @return ワークアウト終了日時
      */
-    public LocalDateTime getFinishedAt() {
+    public OffsetDateTime getFinishedAt() {
         return finishedAt;
     }
 
@@ -95,7 +95,7 @@ public class WorkoutSessionResponse {
      *
      * @param finishedAt ワークアウト終了日時
      */
-    public void setFinishedAt(LocalDateTime finishedAt) {
+    public void setFinishedAt(OffsetDateTime finishedAt) {
         this.finishedAt = finishedAt;
     }
 }

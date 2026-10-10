@@ -1,6 +1,7 @@
 package overload_api.controller.dto;
 
 import java.util.List;
+import java.time.OffsetDateTime;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -10,6 +11,26 @@ import jakarta.validation.constraints.NotEmpty;
  * ワークアウト登録時のリクエスト情報を保持するDTO。
  */
 public class WorkoutRequest {
+
+    /**
+     * 実際に開始操作を行った日時（UTCオフセット付き）。
+     */
+    @NotNull(message = "開始日時は必須です")
+    private OffsetDateTime startedAt;
+
+    /**
+     * @return 実開始日時
+     */
+    public OffsetDateTime getStartedAt() {
+        return startedAt;
+    }
+
+    /**
+     * @param startedAt 実開始日時
+     */
+    public void setStartedAt(OffsetDateTime startedAt) {
+        this.startedAt = startedAt;
+    }
 
 	/**
 	 * ワークアウトを実施したユーザーのID。

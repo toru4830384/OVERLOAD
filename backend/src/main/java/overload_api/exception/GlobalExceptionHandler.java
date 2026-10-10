@@ -72,4 +72,14 @@ public class GlobalExceptionHandler {
 
         return problemDetail;
     }
+    /** Serviceの入力検証エラーをHTTP 400として返す。
+     * @param e 入力検証エラー
+     * @return 400エラー情報
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ProblemDetail handleIllegalArgument(IllegalArgumentException e) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
+        detail.setTitle("Invalid request");
+        return detail;
+    }
 }

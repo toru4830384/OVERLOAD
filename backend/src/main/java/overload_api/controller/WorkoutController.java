@@ -85,7 +85,7 @@ public class WorkoutController {
 
             WorkoutHistoryResponse response = new WorkoutHistoryResponse();
             response.setSessionId(serviceResponse.getSessionId());
-            response.setStartedAt(serviceResponse.getStartedAt());
+            response.setStartedAt(overload_api.time.WorkoutTime.toApiTime(serviceResponse.getStartedAt()));
             response.setExerciseId(serviceResponse.getExerciseId());
             response.setExerciseName(serviceResponse.getExerciseName());
             response.setNote(serviceResponse.getNote());
@@ -125,6 +125,7 @@ public class WorkoutController {
                 new overload_api.service.dto.WorkoutRequest();
 
         serviceRequest.setUserId(request.getUserId());
+        serviceRequest.setStartedAt(request.getStartedAt());
 
         List<overload_api.service.dto.WorkoutExerciseRequest>
                 serviceExercises = new ArrayList<>();

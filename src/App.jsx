@@ -1166,6 +1166,7 @@ export default function Overload() {
 		// noteは種目単位で扱うため、セットごとには設定しない。
 		const requestBody = {
 		  userId: 1,
+		  startedAt: clean.date,
 		  exercises: clean.entries.map((entry) => ({
 		    exerciseId: entry.exerciseId,
 		    note: entry.note || "",

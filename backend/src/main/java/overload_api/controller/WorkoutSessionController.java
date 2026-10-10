@@ -56,8 +56,8 @@ public class WorkoutSessionController {
 
         response.setId(workoutSession.getId());
         response.setUserId(workoutSession.getUserId());
-        response.setStartedAt(workoutSession.getStartedAt());
-        response.setFinishedAt(workoutSession.getFinishedAt());
+        response.setStartedAt(overload_api.time.WorkoutTime.toApiTime(workoutSession.getStartedAt()));
+        response.setFinishedAt(overload_api.time.WorkoutTime.toApiTime(workoutSession.getFinishedAt()));
 
         return response;
     }

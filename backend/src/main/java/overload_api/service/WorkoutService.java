@@ -2,6 +2,9 @@ package overload_api.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+
+import overload_api.time.WorkoutTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -67,6 +70,15 @@ public class WorkoutService {
         if (request == null || request.getUserId() == null) {
             throw new IllegalArgumentException("Workout request and user ID are required");
         }
+        if (request.getStartedAt() == null) {
+            throw new IllegalArgumentException("Workout start time is required");
+        }
+        OffsetDateTime receivedAt = WorkoutTime.now();
+        LocalDateTime finishedAt = WorkoutTime.toDatabaseTime(receivedAt);
+        LocalDateTime startedAt = WorkoutTime.toDatabaseTime(request.getStartedAt());
+        if (request.getStartedAt().toInstant().isAfter(receivedAt.toInstant())) {
+            throw new IllegalArgumentException("Workout start time must not be in the future");
+        }
         if (userMapper.findById(request.getUserId()) == null) {
             throw new ResourceNotFoundException("User not found");
         }
@@ -85,7 +97,8 @@ public class WorkoutService {
 
         WorkoutSession workoutSession = new WorkoutSession();
         workoutSession.setUserId(request.getUserId());
-        workoutSession.setStartedAt(LocalDateTime.now());
+        // 既存DBと同じ日本時間へ変換し、実開始時刻を保存する。
+        workoutSession.setStartedAt(startedAt);
 
         workoutSessionMapper.insert(workoutSession);
 
@@ -128,7 +141,7 @@ public class WorkoutService {
 
         workoutSessionMapper.updateFinishedAt(
                 sessionId,
-                LocalDateTime.now());
+                finishedAt);
 
         return workoutSets;
     }

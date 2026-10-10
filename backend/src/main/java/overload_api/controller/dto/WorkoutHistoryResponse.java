@@ -15,7 +15,7 @@ public class WorkoutHistoryResponse {
     /**
      * ワークアウト開始日時。
      */
-    private java.time.LocalDateTime startedAt;
+    private java.time.OffsetDateTime startedAt;
 
     /**
      * 種目のID。
@@ -60,7 +60,7 @@ public class WorkoutHistoryResponse {
      *
      * @return ワークアウト開始日時
      */
-    public java.time.LocalDateTime getStartedAt() {
+    public java.time.OffsetDateTime getStartedAt() {
         return startedAt;
     }
 
@@ -69,7 +69,7 @@ public class WorkoutHistoryResponse {
      *
      * @param startedAt ワークアウト開始日時
      */
-    public void setStartedAt(java.time.LocalDateTime startedAt) {
+    public void setStartedAt(java.time.OffsetDateTime startedAt) {
         this.startedAt = startedAt;
     }
 
