@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Objects;
 
 import overload_api.time.WorkoutTime;
+import overload_api.controller.dto.WorkoutSessionResponse;
+import overload_api.model.WorkoutSession;
 import overload_api.controller.dto.WorkoutRequest;
 import overload_api.controller.dto.WorkoutExerciseRequest;
 import overload_api.controller.dto.WorkoutSetRequest;
@@ -159,5 +161,20 @@ public final class WorkoutApiMapper {
      */
     public static List<WorkoutSetResponse> toResponses(List<WorkoutSet> sets) {
         return sets.stream().map(WorkoutApiMapper::toResponse).toList();
+    }
+    /**
+     * ワークアウトセッションをAPIレスポンスDTOへ変換する。
+     *
+     * @param session 永続化モデル（必須）
+     * @return API用セッション。未終了の場合はfinishedAtがnull
+     */
+    public static WorkoutSessionResponse toSessionResponse(WorkoutSession session) {
+        Objects.requireNonNull(session, "Workout session is required");
+        WorkoutSessionResponse response = new WorkoutSessionResponse();
+        response.setId(session.getId());
+        response.setUserId(session.getUserId());
+        response.setStartedAt(WorkoutTime.toApiTime(session.getStartedAt()));
+        response.setFinishedAt(WorkoutTime.toApiTime(session.getFinishedAt()));
+        return response;
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import overload_api.mapper.UserMapper;
 import overload_api.model.User;
 import overload_api.exception.ResourceNotFoundException;
+import overload_api.service.command.UserUpdateCommand;
 
 /**
  * ユーザー情報に関する業務処理を提供するサービス。
@@ -52,7 +53,7 @@ public class UserService {
      * @param bodyWeightKg 体重（kg）
      * @return 更新後のユーザー情報
      * @throws ResourceNotFoundException ユーザーが存在しない場合
-     * @throws IllegalArgumentException 年齢または性別がAPI契約に反する場合
+     * @throws IllegalArgumentException 名前・性別・年齢・体重が共通の保存条件に反する場合
      */
     public User update(
             Long id,
@@ -61,31 +62,18 @@ public class UserService {
             Integer age,
             java.math.BigDecimal bodyWeightKg) {
 
-        User user = userMapper.findById(id);
+        UserUpdateCommand command = new UserUpdateCommand(id, name, gender, age, bodyWeightKg);
+        User user = userMapper.findById(command.userId());
 
         if (user == null) {
             throw new ResourceNotFoundException(
                     "User not found: " + id);
         }
 
-        if (age == null || age < 0) {
-            throw new IllegalArgumentException("Age is required and must be non-negative");
-        }
-        if (gender == null || !java.util.Set.of("male", "female").contains(gender)) {
-            throw new IllegalArgumentException("Gender must be male or female");
-        }
-        if (bodyWeightKg == null || bodyWeightKg.signum() <= 0
-                || bodyWeightKg.compareTo(new java.math.BigDecimal("999.99")) > 0
-                || bodyWeightKg.scale() > 2) {
-            throw new IllegalArgumentException("Positive body weight up to 999.99kg with two decimals is required");
-        }
-        if (name == null || name.length() > 50) {
-            throw new IllegalArgumentException("Name is required and must not exceed 50 characters");
-        }
-        user.setName(name);
-        user.setGender(gender);
-        user.setAge(age);
-        user.setBodyWeightKg(bodyWeightKg);
+        user.setName(command.name());
+        user.setGender(command.gender());
+        user.setAge(command.age());
+        user.setBodyWeightKg(command.bodyWeightKg());
 
         userMapper.update(user);
 

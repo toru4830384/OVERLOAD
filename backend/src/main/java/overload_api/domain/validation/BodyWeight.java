@@ -11,7 +11,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 
-/** 登録時体重のDB保存条件を定義する。 HTTP DTOと登録Commandが共有する。 */
+/** プロフィールと登録時体重のDB保存条件を定義する。 HTTP DTOと登録Commandが共有する。 */
 @Documented
 @Target({FIELD, PARAMETER, RECORD_COMPONENT, ANNOTATION_TYPE, TYPE_USE})
 @Retention(RUNTIME)

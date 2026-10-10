@@ -7,8 +7,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import overload_api.domain.validation.BodyWeight;
-import jakarta.validation.Validation;
-import jakarta.validation.Validator;
+import overload_api.domain.validation.CommandValidation;
 import overload_api.domain.validation.WorkoutNote;
 import overload_api.domain.validation.WorkoutRepetitions;
 import overload_api.domain.validation.WorkoutRequestIdentifier;
@@ -38,7 +37,7 @@ public record WorkoutCommand(
         this.bodyWeightKg = bodyWeightKg;
         this.clientRequestId = clientRequestId;
         this.exercises = immutable(exercises);
-        validate(this);
+        CommandValidation.validate(this);
         if (finishedAt.toInstant().isBefore(startedAt.toInstant())
                 || finishedAt.toInstant().isAfter(WorkoutTime.now().toInstant())) {
             throw new IllegalArgumentException("Workout timestamps must be ordered and not in the future");
@@ -70,7 +69,7 @@ public record WorkoutCommand(
             this.exerciseId = exerciseId;
             this.note = note;
             this.sets = immutable(sets);
-            validate(this);
+            CommandValidation.validate(this);
         }
     }
 
@@ -82,7 +81,7 @@ public record WorkoutCommand(
             this.setNumber = setNumber;
             this.weightKg = weightKg;
             this.reps = reps;
-            validate(this);
+            CommandValidation.validate(this);
         }
     }
 
@@ -91,20 +90,7 @@ public record WorkoutCommand(
         return input == null ? null : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(input));
     }
 
-    private static void validate(Object value) {
-        var violations = ValidationHolder.VALIDATOR.validate(value);
-        if (!violations.isEmpty()) {
-            throw new IllegalArgumentException(violations.stream()
-                    .map(v -> v.getPropertyPath() + ": " + v.getMessage()).sorted()
-                    .collect(java.util.stream.Collectors.joining("; ")));
-        }
-    }
-
     private static void require(Object value, String message) {
         if (value == null) throw new IllegalArgumentException(message);
-    }
-    private static class ValidationHolder {
-        // 登録のたびにFactoryを生成せず、Command間でValidatorを共有する。
-        private static final Validator VALIDATOR = Validation.buildDefaultValidatorFactory().getValidator();
     }
 }

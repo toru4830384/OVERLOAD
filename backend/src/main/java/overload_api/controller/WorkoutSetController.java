@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import overload_api.controller.dto.WorkoutSetResponse;
-import overload_api.model.WorkoutSet;
+import overload_api.controller.mapper.WorkoutApiMapper;
 import overload_api.service.WorkoutSetService;
 
 /**
@@ -37,28 +37,8 @@ public class WorkoutSetController {
     public List<WorkoutSetResponse> findAll() {
         return workoutSetService.findAll()
                 .stream()
-                .map(this::toResponse)
+                .map(WorkoutApiMapper::toResponse)
                 .toList();
     }
 
-    /**
-     * ワークアウトセットモデルをAPIレスポンスDTOへ変換する。
-     *
-     * @param workoutSet ワークアウトセットモデル
-     * @return ワークアウトセットレスポンスDTO
-     */
-    private WorkoutSetResponse toResponse(WorkoutSet workoutSet) {
-        WorkoutSetResponse response = new WorkoutSetResponse();
-
-        response.setId(workoutSet.getId());
-        response.setSessionId(workoutSet.getSessionId());
-        response.setExerciseId(workoutSet.getExerciseId());
-        response.setExerciseOrder(workoutSet.getExerciseOrder());
-        response.setSetNumber(workoutSet.getSetNumber());
-        response.setWeightKg(workoutSet.getWeightKg());
-        response.setReps(workoutSet.getReps());
-        response.setNote(workoutSet.getNote());
-
-        return response;
-    }
 }

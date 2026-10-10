@@ -52,3 +52,14 @@ test("a validated scientific-notation count reaches the workout request unchange
   assert.equal(payload.exercises[0].sets[0].reps, 100);
   assert.equal(JSON.parse(JSON.stringify(payload)).exercises[0].sets[0].reps, 100);
 });
+
+
+test("profile input follows the same validate-before-convert rule", async () => {
+  const { profileError, profilePayload } = await import("../src/features/profile/validation.js");
+  const profile = { name: "Test", gender: "male", age: "30", bodyWeightKg: "80" };
+  assert.notEqual(profileError({ ...profile, age: "10.9" }), "");
+  assert.equal(profileError({ ...profile, age: "1e2" }), "");
+  assert.equal(profilePayload({ ...profile, age: "1e2" }).age, 100);
+  assert.notEqual(profileError({ ...profile, bodyWeightKg: "1e2" }), "");
+  assert.notEqual(profileError({ ...profile, bodyWeightKg: "80.001" }), "");
+});

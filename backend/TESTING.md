@@ -45,50 +45,65 @@ Service transaction.
 Generated IDs in fixtures come from the INSERT's generated keys, not a later
 `LAST_INSERT_ID()` call on a potentially different pooled connection.
 
+## Workout timestamp and API mapping contract
 
-## Workout calorie snapshots and retry persistence
+The existing MySQL DATETIME values are interpreted as Asia/Tokyo local time.
+`WorkoutTime` defines this explicitly, independently of the JVM default timezone.
+POST `/api/workouts` requires an offset-bearing `startedAt` from the start action.
+The service preserves its instant and stores it in Japan time. The request also
+contains the frozen completion time (`finishedAt`), start-time `bodyWeightKg`, and
+a workout UUID (`clientRequestId`). Retry requests reuse those same values. History and session APIs return offset-bearing
+ISO 8601 timestamps; an unfinished session keeps `finishedAt: null`.
+Changing the database time convention requires migrating existing values first.
 
-Apply `db/migrations/20261010_workout_snapshot.sql` once before starting this
-backend against an existing database. It adds nullable start-time weight and
-calorie snapshots, a request UUID, an input fingerprint, and a per-user unique
-request key. Existing sessions keep null snapshots; historical values are not
-inferred from the current profile. The test schema includes these additions.
+API DTOs hold data only. Stateless `controller.mapper.*ApiMapper` classes perform
+request and response conversions. SQL/MyBatis mappers remain in `mapper`.
+`WorkoutTimeTest` checks multiple JVM default timezones and
+`WorkoutTimestampContractTest` checks the HTTP timestamp format on both endpoints.
 
-POST `/api/workouts` requires the start action's `startedAt`, the completion
-operation's `finishedAt`, the start-time `bodyWeightKg`, and `clientRequestId`.
-Retries must preserve this UUID, completion time, weight and all set input.
-The Service stores METs calories including rest, rounded to two decimals; history
-returns this stored result after reload and profile changes. Concurrent identical
-requests return the same sets, while differing input for the same UUID returns
-409. A calorie total outside DECIMAL(12,2) returns 422 before DB writes.
+## Workout persistence migration
 
-`WorkoutServiceIntegrationTest` verifies HTTP registration/history, rollback,
-concurrent retry and profile changes against isolated MySQL. Its review regression
-uses 80kg, 60 minutes and 10 reps: the saved and restored total is 170.10kcal.
+Apply `db/migrations/20261010_workout_snapshot.sql` once before starting the updated
+backend against an existing database. It adds nullable calorie/weight snapshots,
+a request UUID, a SHA-256 input fingerprint, and a per-user unique request key.
+The local `overload_db` has been migrated; the 56 existing sessions were preserved
+without inventing historical calories. Other environments require the same migration.
+The test baseline already includes these columns and the unique key.
 
-## In-progress workout recovery
+The Service computes and stores METs calories, including rest time, rounded to
+two decimals. History returns this recorded value, even after profile changes.
+Legacy records with no snapshot return null; the UI marks them as unrecorded.
+INSERT duplicate-key handling and locking reads serialize concurrent retries.
+Identical retries return existing sets; conflicting input returns HTTP 409.
+Integration tests cover concurrent requests, retry, fingerprint conflicts,
+snapshot restoration, and rollback followed by a successful retry.
 
-Browser localStorage keeps the start time, start weight, entries, notes and unfinished
-inputs under a versioned per-user key. Each mutation acquires a Web Lock, compares
-the last observed value, then writes or removes it; stale tabs do not overwrite a
-newer draft. Web Locks require a supported browser on HTTPS or localhost.
-Initialization is read-only and storage failures remain visible with retry actions.
+Frontend checks: `npm test`, `npm run lint`, and `npm run build` from the repository
+root. Profile saves run in a serial queue, collapse pending edits, and expose
+loading/saving/error states with retry actions. No default 65kg is substituted.
 
-Completion waits for queued writes before deciding whether sets exist, and persists
-the exact UUID, finish time and payload before POST. A storage failure prevents POST.
-Unknown network/server outcomes and history failures after POST keep that payload.
-Only confirmed POST rejection (400/404/422) resumes editing. HTTP 409 preserves the
-draft and offers history inspection or explicit discard. Draft cleanup occurs only
-after POST plus canonical history retrieval, or an explicit user discard.
+## In-progress workout recovery and integer input
 
-`tests/workout-draft.test.js` covers reload, same-tab ordering, tab conflicts, storage
-failures, frozen retries and rejection recovery. `tests/api-errors.test.js` verifies
-that HTTP status remains distinguishable from an unknown network failure.
+`src/features/workouts/draft.js` persists an in-progress workout in browser
+localStorage under a versioned per-user key. Initialization only reads the draft;
+updates acquire a browser Web Lock and compare the last read value before writing,
+including notes and unfinished inputs. Pending writes warn before page exit. A completion
+attempt persists its UUID, finish time and payload before POST; persistence failure
+prevents sending. A stale tab cannot overwrite or delete a newer draft. The draft remains
+until POST and canonical history retrieval succeed, so a reload after an unknown
+network outcome can reuse the same idempotency key. Storage failures are shown
+with retry controls; corrupt data is retained until explicitly discarded.
+The browser origin and user must stay the same to recover a draft. Web Locks must
+be available (HTTPS or localhost); unsupported browsers show a storage error.
+Confirmed POST rejection (400/404/422) permits correction; network/server errors
+and failure to read history after a successful POST keep the frozen payload.
+409 preserves the draft and offers history inspection or explicit discard.
 
-## Repetitions input
-
-Convert the complete frontend value with Number, then require an integer from 1
-through 2147483647 before adding a set. Decimal input is rejected; 1e2 becomes 100.
-Jackson float-to-integer coercion is disabled so direct JSON clients cannot bypass
-the rule by sending decimals for reps, IDs or set numbers. `tests/repetitions.test.js`
-and `WorkoutIntegerInputContractTest` cover those boundaries and unchanged values.
+`tests/workout-draft.test.js` exercises reload, failed storage/cleanup, frozen
+retry input and corrupt records. `tests/repetitions.test.js` verifies integer
+bounds and scientific notation. Jackson float-to-integer coercion is disabled;
+`WorkoutIntegerInputContractTest` checks rejection before the Service call.
+`httpHistoryKeepsRestCaloriesAndStartWeightAfterReload` checks the review example
+(80kg, 60 minutes, 10 reps = 170.10kcal) against isolated MySQL and HTTP history,
+including a later profile change. Daily and monthly totals share the same
+`summarizeCalories` function and distinguish unrecorded calories from zero.
