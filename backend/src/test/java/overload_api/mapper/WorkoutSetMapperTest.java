@@ -301,7 +301,7 @@ class WorkoutSetMapperTest extends MySqlIntegrationTest {
                 VALUES (?, ?, ?, ?)
                 """,
                 "Mapper Test User",
-                "男性",
+                "male",
                 27,
                 new BigDecimal("70.00"));
     }

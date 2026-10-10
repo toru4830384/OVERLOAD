@@ -794,7 +794,7 @@ export default function Overload() {
   const [restJustFinished, setRestJustFinished] = useState(false);
   const [restNextSet, setRestNextSet] = useState(null);
   const [bodyWeightKg, setBodyWeightKg] = useState(65);
-  const [gender, setGender] = useState("none");
+  const [gender, setGender] = useState("");
   const [userName, setUserName] = useState("");
   const [age, setAge] = useState("");
   const [completionSummary, setCompletionSummary] = useState(null);
@@ -842,7 +842,7 @@ export default function Overload() {
         const user = await userRes.json();
 
         setUserName(user.name || "");
-        setGender(user.gender || "");
+        setGender(["male", "female"].includes(user.gender) ? user.gender : "");
         setAge(user.age ?? "");
         setBodyWeightKg(user.bodyWeightKg ?? "");
 
@@ -927,7 +927,7 @@ export default function Overload() {
 
   // プロフィールをJava APIへ自動保存
   useEffect(() => {
-    if (!loaded || age === "" || !Number.isInteger(Number(age)) || Number(age) < 0) return;
+    if (!loaded || !["male", "female"].includes(gender) || age === "" || !Number.isInteger(Number(age)) || Number(age) < 0) return;
 
     const timer = setTimeout(async () => {
       try {
@@ -1034,6 +1034,10 @@ export default function Overload() {
   }, [detailExercise]);
 
   function startWorkout() {
+    if (!["male", "female"].includes(gender)) {
+      setTab("profile");
+      return;
+    }
     setActiveSession({ id: "s-" + Date.now(), date: new Date().toISOString(), entries: [] });
   }
 
@@ -1367,7 +1371,7 @@ export default function Overload() {
                 </div>
                 <div style={{ color: COLORS.steel, fontSize: 14, marginBottom: 20 }}>今日のワークアウトを開始しましょう</div>
                 <button type="button" className="btn-tactile" onClick={startWorkout} style={{ background: COLORS.red, color: "#fff", border: "none", borderRadius: 10, padding: "14px 28px", fontSize: 15, fontWeight: 600, boxShadow: `0 4px 20px rgba(214,64,43,0.4)` }}>
-                  ワークアウト開始
+                  {gender === "" ? "プロフィールで性別を選択" : "ワークアウト開始"}
                 </button>
               </div>
             ) : (
@@ -1787,16 +1791,17 @@ export default function Overload() {
               </div>
 
               <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 12, color: COLORS.steel, marginBottom: 6 }}>性別</div>
+                <div style={{ fontSize: 12, color: COLORS.steel, marginBottom: 6 }}>性別（必須）</div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  {[{ v: "male", l: "男性" }, { v: "female", l: "女性" }, { v: "none", l: "未設定" }].map((g) => (
-                    <button type="button" key={g.v} onClick={() => setGender(g.v)}
+                  {[{ v: "male", l: "男性" }, { v: "female", l: "女性" }].map((g) => (
+                    <button type="button" key={g.v} aria-pressed={gender === g.v} onClick={() => setGender(g.v)}
                       style={{ flex: 1, background: gender === g.v ? COLORS.blue : COLORS.surfaceAlt, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: "10px 0", color: gender === g.v ? "#fff" : COLORS.steel, fontSize: 13 }}
                     >
                       {g.l}
                     </button>
                   ))}
                 </div>
+                {gender === "" && <div role="alert" style={{ color: COLORS.steel, fontSize: 12, marginTop: 6 }}>男性または女性を選択してください。選択するまでプロフィールは保存されません。</div>}
               </div>
 
               <div style={{ marginBottom: 14 }}>

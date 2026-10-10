@@ -137,7 +137,7 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
     private WorkoutRequest validRequest() {
         Long userId = insert(jdbcTemplate,
                 "INSERT INTO users (name, gender, age, body_weight_kg) VALUES (?, ?, ?, ?)",
-                "Integration Test User", "男性", 27, new BigDecimal("70.00"));
+                "Integration Test User", "male", 27, new BigDecimal("70.00"));
         Long exerciseId = insert(jdbcTemplate,
                 "INSERT INTO exercises (name, category, barbell, equipment, pattern) VALUES (?, ?, ?, ?, ?)",
                 "Integration Test Exercise", "胸", false, "バーベル", "プレス");

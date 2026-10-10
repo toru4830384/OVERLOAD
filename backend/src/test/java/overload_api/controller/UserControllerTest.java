@@ -73,7 +73,7 @@ class UserControllerTest {
 
         user.setId(1L);
         user.setName("田中　透");
-        user.setGender("男性");
+        user.setGender("male");
         user.setAge(31);
         user.setBodyWeightKg(
                 new BigDecimal("84.00"));
@@ -90,7 +90,7 @@ class UserControllerTest {
         assertNotNull(result);
         assertEquals(1L, result.getId());
         assertEquals("田中　透", result.getName());
-        assertEquals("男性", result.getGender());
+        assertEquals("male", result.getGender());
         assertEquals(31, result.getAge());
         assertEquals(
                 new BigDecimal("84.00"),
@@ -130,7 +130,7 @@ class UserControllerTest {
 
         user.setId(1L);
         user.setName("田中　透");
-        user.setGender("男性");
+        user.setGender("male");
         user.setAge(31);
         user.setBodyWeightKg(
                 new BigDecimal("84.00"));
@@ -138,7 +138,7 @@ class UserControllerTest {
         when(userService.update(
                 1L,
                 "田中　透",
-                "男性",
+                "male",
                 31,
                 new BigDecimal("84.00")))
                 .thenReturn(user);
@@ -150,7 +150,7 @@ class UserControllerTest {
                 new overload_api.controller.dto.UserUpdateRequest();
 
         request.setName("田中　透");
-        request.setGender("男性");
+        request.setGender("male");
         request.setAge(31);
         request.setBodyWeightKg(
                 new BigDecimal("84.00"));
@@ -161,7 +161,7 @@ class UserControllerTest {
         assertNotNull(result);
         assertEquals(1L, result.getId());
         assertEquals("田中　透", result.getName());
-        assertEquals("男性", result.getGender());
+        assertEquals("male", result.getGender());
         assertEquals(31, result.getAge());
         assertEquals(
                 new BigDecimal("84.00"),
@@ -171,7 +171,7 @@ class UserControllerTest {
                 .update(
                         1L,
                         "田中　透",
-                        "男性",
+                        "male",
                         31,
                         new BigDecimal("84.00"));
     }
@@ -189,7 +189,7 @@ class UserControllerTest {
         String requestBody = """
                 {
                     "name": "田中　透",
-                    "gender": "男性",
+                    "gender": "male",
                     "age": -1,
                     "bodyWeightKg": 84.00
                 }
@@ -229,7 +229,7 @@ class UserControllerTest {
         String requestBody = """
                 {
                     "name": "田中　透",
-                    "gender": "男性",
+                    "gender": "male",
                     "age": 31,
                     "bodyWeightKg": 0
                 }
@@ -269,7 +269,7 @@ class UserControllerTest {
         String requestBody = """
                 {
                     "name": "田中　透",
-                    "gender": "男性",
+                    "gender": "male",
                     "age": 31,
                     "bodyWeightKg": -1.00
                 }
@@ -304,7 +304,7 @@ class UserControllerTest {
     @Test
     void updateReturnsNotFoundWhenUserDoesNotExist() throws Exception {
         when(userService.update(
-                9999L, "田中　透", "男性", 31, new BigDecimal("84.00")))
+                9999L, "田中　透", "male", 31, new BigDecimal("84.00")))
                 .thenThrow(new ResourceNotFoundException("User not found: 9999"));
 
         mockMvc.perform(put("/api/users/9999")
@@ -317,7 +317,7 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.detail").value("User not found: 9999"));
 
         verify(userService).update(
-                9999L, "田中　透", "男性", 31, new BigDecimal("84.00"));
+                9999L, "田中　透", "male", 31, new BigDecimal("84.00"));
     }
 
     /**
@@ -328,7 +328,7 @@ class UserControllerTest {
     @Test
     void updateReturnsBadRequestWhenDatabaseConstraintIsViolated() throws Exception {
         when(userService.update(
-                1L, "田中　透", "男性", 31, new BigDecimal("84.00")))
+                1L, "田中　透", "male", 31, new BigDecimal("84.00")))
                 .thenThrow(new DataIntegrityViolationException("internal database constraint detail"));
 
         mockMvc.perform(put("/api/users/1")
@@ -341,7 +341,7 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.detail").value("入力値が不正です"));
 
         verify(userService).update(
-                1L, "田中　透", "男性", 31, new BigDecimal("84.00"));
+                1L, "田中　透", "male", 31, new BigDecimal("84.00"));
     }
 
     /**
@@ -353,7 +353,7 @@ class UserControllerTest {
         return """
                 {
                     "name": "田中　透",
-                    "gender": "男性",
+                    "gender": "male",
                     "age": 31,
                     "bodyWeightKg": 84.00
                 }

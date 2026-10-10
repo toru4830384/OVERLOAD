@@ -37,4 +37,17 @@ class ReviewValidationTest {
         }
         verifyNoInteractions(service);
     }
+    @Test
+    void invalidAndUnsetGenderAreRejectedBeforeService() throws Exception {
+        var service = mock(overload_api.service.UserService.class);
+        var mvc = MockMvcBuilders.standaloneSetup(new UserController(service))
+                .setControllerAdvice(new GlobalExceptionHandler()).build();
+        for (String value : new String[] {"null", "\"男性\"", "\"MALE\"", "\"none\"", "\"other\"", "\"\""}) {
+            mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .put("/api/users/1").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"age\":31,\"name\":\"Test\",\"gender\":" + value + ",\"bodyWeightKg\":70}"))
+                    .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(service);
+    }
 }

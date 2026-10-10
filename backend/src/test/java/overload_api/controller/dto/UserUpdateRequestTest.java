@@ -139,16 +139,23 @@ class UserUpdateRequestTest {
         assertEquals(0, violations.size());
     }
 
-    /** 年齢未指定を拒否し、0歳を受け付ける。 */
+    /** DBに到達する前に未入力年齢と不正性別を拒否する。 */
     @Test
-    void rejectsNullAgeAndAcceptsZero() {
+    void rejectsNullAgeAndInvalidGender() {
         var request = createValidRequest();
         request.setAge(null);
-        var violations = validator.validate(request);
-        assertEquals(1, violations.size());
-        assertEquals("age", violations.iterator().next().getPropertyPath().toString());
+        assertEquals("age", validator.validate(request).iterator().next().getPropertyPath().toString());
         request.setAge(0);
-        assertEquals(0, validator.validate(request).size());
+        for (String gender : new String[] {null, "男性", "MALE", "", "other", "none"}) {
+            request.setGender(gender);
+            var violations = validator.validate(request);
+            assertEquals(1, violations.size());
+            assertEquals("gender", violations.iterator().next().getPropertyPath().toString());
+        }
+        for (String gender : new String[] {"male", "female"}) {
+            request.setGender(gender);
+            assertEquals(0, validator.validate(request).size());
+        }
     }
 
     /**
@@ -161,11 +168,22 @@ class UserUpdateRequestTest {
                 new UserUpdateRequest();
 
         request.setName("テストユーザー");
-        request.setGender("男性");
+        request.setGender("male");
         request.setAge(31);
         request.setBodyWeightKg(
                 new BigDecimal("84.00"));
 
         return request;
+    }
+    /** 年齢未指定を拒否し、0歳を受け付ける。 */
+    @Test
+    void rejectsNullAgeAndAcceptsZero() {
+        var request = createValidRequest();
+        request.setAge(null);
+        var violations = validator.validate(request);
+        assertEquals(1, violations.size());
+        assertEquals("age", violations.iterator().next().getPropertyPath().toString());
+        request.setAge(0);
+        assertEquals(0, validator.validate(request).size());
     }
 }

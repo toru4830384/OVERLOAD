@@ -38,6 +38,7 @@ public class UserService {
                     "User not found: " + id);
         }
 
+        normalizeGender(user);
         return user;
     }
 
@@ -51,7 +52,7 @@ public class UserService {
      * @param bodyWeightKg 体重（kg）
      * @return 更新後のユーザー情報
      * @throws ResourceNotFoundException ユーザーが存在しない場合
-     * @throws IllegalArgumentException 年齢が未指定または負数の場合
+     * @throws IllegalArgumentException 年齢または性別がAPI契約に反する場合
      */
     public User update(
             Long id,
@@ -70,6 +71,9 @@ public class UserService {
         if (age == null || age < 0) {
             throw new IllegalArgumentException("Age is required and must be non-negative");
         }
+        if (gender == null || !java.util.Set.of("male", "female").contains(gender)) {
+            throw new IllegalArgumentException("Gender must be male or female");
+        }
         user.setName(name);
         user.setGender(gender);
         user.setAge(age);
@@ -78,5 +82,20 @@ public class UserService {
         userMapper.update(user);
 
         return user;
+    }
+    /**
+     * 既存データの表示名をAPI値へ変換し、プロフィールの選択状態を復元する。
+     * 未選択・未知値はnullとして返し、プロフィール更新時に選択を必須にする。
+     *
+     * @param user 取得したユーザー情報
+     */
+    private void normalizeGender(User user) {
+        String gender = user.getGender();
+        user.setGender(gender == null ? null : switch (gender) {
+            case "男性", "MALE", "male" -> "male";
+            case "女性", "FEMALE", "female" -> "female";
+            // 旧データの未選択・未知値は、性別を推測せず再選択を求める。
+            default -> null;
+        });
     }
 }

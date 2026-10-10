@@ -40,7 +40,7 @@ class UserServiceTest {
 
         user.setId(1L);
         user.setName("田中　透");
-        user.setGender("男性");
+        user.setGender("male");
         user.setAge(31);
         user.setBodyWeightKg(
                 new BigDecimal("84.00"));
@@ -62,7 +62,7 @@ class UserServiceTest {
                 result.getName());
 
         assertEquals(
-                "男性",
+                "male",
                 result.getGender());
 
         assertEquals(
@@ -119,7 +119,7 @@ class UserServiceTest {
 
         user.setId(1L);
         user.setName("変更前");
-        user.setGender("男性");
+        user.setGender("male");
         user.setAge(30);
         user.setBodyWeightKg(
                 new BigDecimal("80.00"));
@@ -131,7 +131,7 @@ class UserServiceTest {
                 userService.update(
                         1L,
                         "田中　透",
-                        "男性",
+                        "male",
                         31,
                         new BigDecimal("84.00"));
 
@@ -146,7 +146,7 @@ class UserServiceTest {
                 result.getName());
 
         assertEquals(
-                "男性",
+                "male",
                 result.getGender());
 
         assertEquals(
@@ -169,7 +169,7 @@ class UserServiceTest {
                 .update(argThat(updatedUser ->
                         Long.valueOf(1L).equals(updatedUser.getId())
                                 && "田中　透".equals(updatedUser.getName())
-                                && "男性".equals(updatedUser.getGender())
+                                && "male".equals(updatedUser.getGender())
                                 && Integer.valueOf(31)
                                         .equals(updatedUser.getAge())
                                 && new BigDecimal("84.00")
@@ -198,7 +198,7 @@ class UserServiceTest {
                 () -> userService.update(
                         9999L,
                         "存在しないユーザー",
-                        "男性",
+                        "male",
                         30,
                         new BigDecimal("70.00")));
 
@@ -207,6 +207,40 @@ class UserServiceTest {
 
         verify(userMapper, never())
                 .update(org.mockito.ArgumentMatchers.any(User.class));
+    }
+    /** 既存の表示名データもAPI許可値で返す。 */
+    @Test
+    void restoresLegacyGenderAsApiValue() {
+        var mapper = mock(overload_api.mapper.UserMapper.class);
+        var user = new overload_api.model.User();
+        user.setGender("男性");
+        when(mapper.findById(1L)).thenReturn(user);
+        assertEquals("male", new UserService(mapper).findById(1L).getGender());
+    }
+    /** 未選択・未知の既存値を男性や女性に推測変換しない。 */
+    @Test
+    void legacyUnsetAndUnknownGenderRequireSelection() {
+        var mapper = mock(UserMapper.class);
+        var service = new UserService(mapper);
+        for (String gender : new String[] {null, "none", "未設定", "other"}) {
+            var user = new User();
+            user.setGender(gender);
+            when(mapper.findById(1L)).thenReturn(user);
+            org.junit.jupiter.api.Assertions.assertNull(service.findById(1L).getGender());
+        }
+    }
+
+    /** Serviceの直接呼び出しでも未選択を保存しない。 */
+    @Test
+    void updateRejectsUnsetGenderBeforeWriting() {
+        var mapper = mock(UserMapper.class);
+        when(mapper.findById(1L)).thenReturn(new User());
+        var service = new UserService(mapper);
+        for (String gender : new String[] {null, "none", "other"}) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> service.update(1L, "Test", gender, 30, new BigDecimal("70")));
+        }
+        verify(mapper, never()).update(org.mockito.ArgumentMatchers.any(User.class));
     }
     /** 年齢未指定・負数をDB書き込み前に拒否する。 */
     @Test

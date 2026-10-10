@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 
 /**
  * ユーザー情報更新時のリクエスト情報を保持するDTO。
@@ -17,8 +18,10 @@ public class UserUpdateRequest {
     private String name;
 
     /**
-     * 性別。
+     * 性別。API値はmale / female、表示名はフロントで変換する。
      */
+    @NotNull(message = "性別は必須です")
+    @Pattern(regexp = "male|female", message = "性別は男性または女性を選択してください")
     private String gender;
 
     /**
