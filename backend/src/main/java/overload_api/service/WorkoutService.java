@@ -1,8 +1,6 @@
 package overload_api.service;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 
 import overload_api.time.WorkoutTime;
 import java.util.ArrayList;
@@ -21,11 +19,10 @@ import overload_api.mapper.WorkoutSetMapper;
 import overload_api.mapper.dto.WorkoutHistoryRow;
 import overload_api.model.WorkoutSession;
 import overload_api.model.WorkoutSet;
-import overload_api.service.dto.WorkoutExerciseRequest;
 import overload_api.service.dto.WorkoutHistoryResponse;
 import overload_api.service.dto.WorkoutHistorySetResponse;
 import overload_api.service.dto.WorkoutRequest;
-import overload_api.service.dto.WorkoutSetRequest;
+import overload_api.service.command.WorkoutCommand;
 
 /**
  * ワークアウトに関する業務処理を提供するサービス。
@@ -67,36 +64,24 @@ public class WorkoutService {
      */
     @Transactional
     public List<WorkoutSet> create(WorkoutRequest request) {
-        if (request == null || request.getUserId() == null) {
-            throw new IllegalArgumentException("Workout request and user ID are required");
-        }
-        if (request.getStartedAt() == null) {
-            throw new IllegalArgumentException("Workout start time is required");
-        }
-        OffsetDateTime receivedAt = WorkoutTime.now();
-        LocalDateTime finishedAt = WorkoutTime.toDatabaseTime(receivedAt);
-        LocalDateTime startedAt = WorkoutTime.toDatabaseTime(request.getStartedAt());
-        if (request.getStartedAt().toInstant().isAfter(receivedAt.toInstant())) {
-            throw new IllegalArgumentException("Workout start time must not be in the future");
-        }
-        if (userMapper.findById(request.getUserId()) == null) {
+        WorkoutCommand command = WorkoutCommand.from(request);
+        LocalDateTime finishedAt = WorkoutTime.toDatabaseTime(WorkoutTime.now());
+        LocalDateTime startedAt = WorkoutTime.toDatabaseTime(command.startedAt());
+        if (userMapper.findById(command.userId()) == null) {
             throw new ResourceNotFoundException("User not found");
         }
 
-        // Controller以外からの呼び出しでも、不正な入力では登録しない。
-        validateExercises(request.getExercises());
-
         // 全ての種目の存在を確認してから書き込みを開始する。
-        for (WorkoutExerciseRequest exerciseRequest : request.getExercises()) {
+        for (WorkoutCommand.Exercise exerciseRequest : command.exercises()) {
             if (exerciseMapper.findById(
-                    exerciseRequest.getExerciseId()) == null) {
+                    exerciseRequest.exerciseId()) == null) {
                 throw new ResourceNotFoundException(
                         "Exercise not found");
             }
         }
 
         WorkoutSession workoutSession = new WorkoutSession();
-        workoutSession.setUserId(request.getUserId());
+        workoutSession.setUserId(command.userId());
         // 既存DBと同じ日本時間へ変換し、実開始時刻を保存する。
         workoutSession.setStartedAt(startedAt);
 
@@ -110,29 +95,29 @@ public class WorkoutService {
          * 同一種目の全セットに同じ種目順を設定して登録する。
          */
         for (int exerciseIndex = 0;
-                exerciseIndex < request.getExercises().size();
+                exerciseIndex < command.exercises().size();
                 exerciseIndex++) {
 
-            WorkoutExerciseRequest exerciseRequest =
-                    request.getExercises().get(exerciseIndex);
+            WorkoutCommand.Exercise exerciseRequest =
+                    command.exercises().get(exerciseIndex);
 
             int exerciseOrder = exerciseIndex + 1;
 
-            for (WorkoutSetRequest setRequest : exerciseRequest.getSets()) {
+            for (WorkoutCommand.Set setRequest : exerciseRequest.sets()) {
                 WorkoutSet workoutSet = new WorkoutSet();
 
                 workoutSet.setSessionId(sessionId);
                 workoutSet.setExerciseId(
-                        exerciseRequest.getExerciseId());
+                        exerciseRequest.exerciseId());
                 workoutSet.setExerciseOrder(exerciseOrder);
                 workoutSet.setSetNumber(
-                        setRequest.getSetNumber());
+                        setRequest.setNumber());
                 workoutSet.setWeightKg(
-                        setRequest.getWeightKg());
+                        setRequest.weightKg());
                 workoutSet.setReps(
-                        setRequest.getReps());
+                        setRequest.reps());
                 workoutSet.setNote(
-                        exerciseRequest.getNote());
+                        exerciseRequest.note());
 
                 workoutSetMapper.insert(workoutSet);
                 workoutSets.add(workoutSet);
@@ -144,35 +129,6 @@ public class WorkoutService {
                 finishedAt);
 
         return workoutSets;
-    }
-
-    /**
-     * 種目とセットの必須項目および数値の下限を検証する。
-     *
-     * @param exercises 登録する種目一覧
-     * @throws IllegalArgumentException 入力が不正な場合
-     */
-    private void validateExercises(List<WorkoutExerciseRequest> exercises) {
-        if (exercises == null || exercises.isEmpty()) {
-            throw new IllegalArgumentException("Workout exercises must not be null or empty");
-        }
-        for (WorkoutExerciseRequest exercise : exercises) {
-            if (exercise == null || exercise.getExerciseId() == null) {
-                throw new IllegalArgumentException("Workout exercise and exercise ID are required");
-            }
-            if (exercise.getSets() == null || exercise.getSets().isEmpty()) {
-                throw new IllegalArgumentException("Workout sets must not be null or empty");
-            }
-            for (WorkoutSetRequest set : exercise.getSets()) {
-                if (set == null || set.getSetNumber() == null || set.getSetNumber() < 1
-                        || set.getReps() == null || set.getReps() < 1
-                        || set.getWeightKg() == null
-                        || set.getWeightKg().compareTo(new BigDecimal("0.01")) < 0) {
-                    throw new IllegalArgumentException(
-                            "Each workout set requires setNumber >= 1, reps >= 1 and weightKg >= 0.01");
-                }
-            }
-        }
     }
 
     /**

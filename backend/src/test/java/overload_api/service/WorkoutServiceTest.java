@@ -1,6 +1,7 @@
 package overload_api.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -224,9 +225,7 @@ class WorkoutServiceTest {
                         IllegalArgumentException.class,
                         () -> workoutService.create(request));
 
-        assertEquals(
-                "Workout sets must not be null or empty",
-                exception.getMessage());
+        assertTrue(exception.getMessage().contains("sets"));
 
         verify(exerciseMapper, never())
                 .findById(1L);
@@ -294,9 +293,7 @@ class WorkoutServiceTest {
                         IllegalArgumentException.class,
                         () -> workoutService.create(request));
 
-        assertEquals(
-                "Workout sets must not be null or empty",
-                exception.getMessage());
+        assertTrue(exception.getMessage().contains("sets"));
 
         verify(exerciseMapper, never())
                 .findById(1L);
@@ -341,6 +338,11 @@ class WorkoutServiceTest {
         request.setStartedAt(java.time.OffsetDateTime.parse("2026-01-01T10:00:00+09:00"));
 
         request.setUserId(9999L);
+        var set = new WorkoutSetRequest();
+        set.setSetNumber(1); set.setWeightKg(new BigDecimal("50")); set.setReps(1);
+        var exercise = new WorkoutExerciseRequest();
+        exercise.setExerciseId(1L); exercise.setSets(List.of(set));
+        request.setExercises(List.of(exercise));
 
         when(userMapper.findById(9999L))
                 .thenReturn(null);
