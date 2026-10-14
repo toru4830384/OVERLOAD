@@ -74,6 +74,11 @@ public class UserService {
         if (gender == null || !java.util.Set.of("male", "female").contains(gender)) {
             throw new IllegalArgumentException("Gender must be male or female");
         }
+        if (bodyWeightKg == null || bodyWeightKg.signum() <= 0
+                || bodyWeightKg.compareTo(new java.math.BigDecimal("999.99")) > 0
+                || bodyWeightKg.scale() > 2) {
+            throw new IllegalArgumentException("Positive body weight up to 999.99kg with two decimals is required");
+        }
         user.setName(name);
         user.setGender(gender);
         user.setAge(age);

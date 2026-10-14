@@ -254,4 +254,14 @@ class UserServiceTest {
         }
         verify(mapper, never()).update(org.mockito.ArgumentMatchers.any(User.class));
     }
+    @Test
+    void updateRejectsInvalidBodyWeightBeforeWriting() {
+        var mapper = mock(UserMapper.class); when(mapper.findById(1L)).thenReturn(new User());
+        var service = new UserService(mapper);
+        for (BigDecimal weight : new BigDecimal[] {null, BigDecimal.ZERO, new BigDecimal("1000"), new BigDecimal("70.001")}) {
+            assertThrows(IllegalArgumentException.class, () -> service.update(1L, "Test", "male", 30, weight));
+        }
+        verify(mapper, never()).update(org.mockito.ArgumentMatchers.any(User.class));
+    }
+
 }

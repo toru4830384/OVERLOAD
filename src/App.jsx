@@ -1,3 +1,4 @@
+import { profileWeightError } from "./features/profile/weightValidation.js";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Plus, Play, Pause, Check, X, ChevronDown, ChevronUp, ChevronLeft, Dumbbell, History, ListChecks, Timer, Trash2, User } from "lucide-react";
 
@@ -927,7 +928,7 @@ export default function Overload() {
 
   // プロフィールをJava APIへ自動保存
   useEffect(() => {
-    if (!loaded || !["male", "female"].includes(gender) || age === "" || !Number.isInteger(Number(age)) || Number(age) < 0) return;
+    if (!loaded || profileWeightError(bodyWeightKg) || !["male", "female"].includes(gender) || age === "" || !Number.isInteger(Number(age)) || Number(age) < 0) return;
 
     const timer = setTimeout(async () => {
       try {
@@ -941,7 +942,7 @@ export default function Overload() {
             gender: gender,
             age: Number(age),
             bodyWeightKg:
-              bodyWeightKg === "" ? null : Number(bodyWeightKg),
+              Number(bodyWeightKg),
           }),
         });
 
@@ -1821,13 +1822,13 @@ export default function Overload() {
                 <div style={{ fontSize: 12, color: COLORS.steel, marginBottom: 6 }}>体重(消費カロリー計算用)</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <input
-                    type="number" inputMode="decimal" value={bodyWeightKg}
+                    type="number" inputMode="decimal" required min="0.01" max="999.99" step="0.01" value={bodyWeightKg}
                     onChange={(e) => setBodyWeightKg(e.target.value === "" ? "" : Math.max(0, parseFloat(e.target.value) || 0))}
-                    onBlur={() => { if (bodyWeightKg === "" || bodyWeightKg === 0) setBodyWeightKg(65); }}
                     style={{ flex: 1, background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: 10, color: COLORS.chalk, fontSize: 14 }}
                   />
                   <span style={{ fontSize: 12, color: COLORS.steelDim }}>kg</span>
                 </div>
+                {profileWeightError(bodyWeightKg) && <div role="alert" style={{ color: COLORS.steel, fontSize: 12 }}>{profileWeightError(bodyWeightKg)}</div>}
               </div>
             </div>
 

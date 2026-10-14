@@ -3,6 +3,7 @@ package overload_api.controller.dto;
 import java.math.BigDecimal;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -38,9 +39,12 @@ public class UserUpdateRequest {
     /**
      * 体重（kg）。
      *
+     * {@code @NotNull}・{@code @Digits}で必須・DECIMAL(5,2)の範囲を検証し、
      * {@code @DecimalMin} により、
      * 体重が0より大きい値であることを検証する。
      */
+    @NotNull(message = "体重は必須です")
+    @Digits(integer = 3, fraction = 2, message = "体重は999.99kg以下、小数第2位まで入力してください")
     @DecimalMin(
             value = "0.0",
             inclusive = false,
