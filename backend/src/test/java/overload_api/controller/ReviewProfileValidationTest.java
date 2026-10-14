@@ -21,4 +21,23 @@ class ReviewProfileValidationTest {
         }
         verifyNoInteractions(service);
     }
+    @Test
+    void nameBoundaryIsValidatedBeforeService() throws Exception {
+        var service = mock(UserService.class);
+        when(service.update(anyLong(), anyString(), anyString(), anyInt(), any())).thenReturn(new overload_api.model.User());
+        var mvc = MockMvcBuilders.standaloneSetup(new UserController(service))
+                .setControllerAdvice(new GlobalExceptionHandler()).build();
+        for (String field : new String[] {"", "\"name\":null,", "\"name\":\"" + "a".repeat(51) + "\","}) {
+            mvc.perform(put("/api/users/1").contentType(MediaType.APPLICATION_JSON)
+                    .content("{" + field + "\"age\":30,\"bodyWeightKg\":70,\"gender\":\"male\"}"))
+                    .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(service);
+        for (String name : new String[] {"", "a".repeat(50)}) {
+            mvc.perform(put("/api/users/1").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"name\":\"" + name + "\",\"age\":30,\"bodyWeightKg\":70,\"gender\":\"male\"}"))
+                    .andExpect(status().isOk());
+        }
+    }
+
 }

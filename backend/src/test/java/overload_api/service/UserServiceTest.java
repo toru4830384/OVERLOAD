@@ -264,4 +264,14 @@ class UserServiceTest {
         verify(mapper, never()).update(org.mockito.ArgumentMatchers.any(User.class));
     }
 
+    @Test
+    void nameConstraintAlsoAppliesToDirectServiceCalls() {
+        var mapper = mock(UserMapper.class); when(mapper.findById(1L)).thenReturn(new User());
+        var service = new UserService(mapper);
+        for (String name : new String[] {null, "a".repeat(51)}) {
+            assertThrows(IllegalArgumentException.class, () -> service.update(1L, name, "male", 30, new BigDecimal("70")));
+        }
+        verify(mapper, never()).update(org.mockito.ArgumentMatchers.any(User.class));
+    }
+
 }

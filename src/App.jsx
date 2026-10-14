@@ -1,3 +1,4 @@
+import { profileNameError } from "./features/profile/nameValidation.js";
 import { profileWeightError } from "./features/profile/weightValidation.js";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Plus, Play, Pause, Check, X, ChevronDown, ChevronUp, ChevronLeft, Dumbbell, History, ListChecks, Timer, Trash2, User } from "lucide-react";
@@ -928,7 +929,7 @@ export default function Overload() {
 
   // プロフィールをJava APIへ自動保存
   useEffect(() => {
-    if (!loaded || profileWeightError(bodyWeightKg) || !["male", "female"].includes(gender) || age === "" || !Number.isInteger(Number(age)) || Number(age) < 0) return;
+    if (!loaded || profileNameError(userName) || profileWeightError(bodyWeightKg) || !["male", "female"].includes(gender) || age === "" || !Number.isInteger(Number(age)) || Number(age) < 0) return;
 
     const timer = setTimeout(async () => {
       try {
@@ -1785,7 +1786,7 @@ export default function Overload() {
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 12, color: COLORS.steel, marginBottom: 6 }}>名前</div>
                 <input
-                  type="text" placeholder="未設定" value={userName}
+                  type="text" placeholder="未設定" maxLength={50} value={userName}
                   onChange={(e) => setUserName(e.target.value)}
                   style={{ width: "100%", background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: 10, color: COLORS.chalk, fontSize: 14 }}
                 />

@@ -195,4 +195,16 @@ class UserUpdateRequestTest {
         }
     }
 
+    @Test
+    void nameRejectsNullAndOverFiftyAndAcceptsBoundaryAndEmpty() {
+        for (String name : new String[] {null, "a".repeat(51)}) {
+            var request = createValidRequest(); request.setName(name);
+            assertEquals("name", validator.validate(request).iterator().next().getPropertyPath().toString());
+        }
+        for (String name : new String[] {"", "a".repeat(50)}) {
+            var request = createValidRequest(); request.setName(name);
+            assertEquals(0, validator.validate(request).size());
+        }
+    }
+
 }

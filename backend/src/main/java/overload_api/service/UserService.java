@@ -79,6 +79,9 @@ public class UserService {
                 || bodyWeightKg.scale() > 2) {
             throw new IllegalArgumentException("Positive body weight up to 999.99kg with two decimals is required");
         }
+        if (name == null || name.length() > 50) {
+            throw new IllegalArgumentException("Name is required and must not exceed 50 characters");
+        }
         user.setName(name);
         user.setGender(gender);
         user.setAge(age);

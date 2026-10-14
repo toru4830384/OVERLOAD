@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -14,8 +15,10 @@ import jakarta.validation.constraints.Pattern;
 public class UserUpdateRequest {
 
     /**
-     * ユーザー名。
+     * ユーザー名。必須・50文字以内。空文字はDB仕様どおり許可する。
      */
+    @NotNull
+    @Size(max = 50)
     private String name;
 
     /**
