@@ -3,6 +3,7 @@ package overload_api.controller.dto;
 import java.math.BigDecimal;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
@@ -26,8 +27,10 @@ public class WorkoutSetRequest {
      *
      * {@code @NotNull} により、重量が未入力でないことを検証する。
      * {@code @DecimalMin} により、重量が0.01kg以上であることを検証する。
+     * {@code @Digits}でDECIMAL(6,2)の整数4桁・小数2桁に限定する。
      */
     @NotNull
+    @Digits(integer = 4, fraction = 2, message = "重量は9999.99kg以下、小数第2位まで入力してください")
     @DecimalMin(
             value = "0.01",
             message = "重量は0.01kg以上の値を入力してください")

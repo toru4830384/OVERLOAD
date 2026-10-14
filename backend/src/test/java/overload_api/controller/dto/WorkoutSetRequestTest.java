@@ -284,9 +284,9 @@ class WorkoutSetRequestTest {
         WorkoutSetRequest request = createValidRequest();
         request.setWeightKg(new BigDecimal("0.001"));
         var violations = validator.validate(request);
-        assertEquals(1, violations.size());
-        assertEquals("重量は0.01kg以上の値を入力してください",
-                violations.iterator().next().getMessage());
+        assertEquals(2, violations.size());
+        assertTrue(violations.stream().anyMatch(v ->
+                "重量は0.01kg以上の値を入力してください".equals(v.getMessage())));
     }
 
 }

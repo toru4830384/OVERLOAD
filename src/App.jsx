@@ -1,3 +1,4 @@
+import { workoutWeightError } from "./features/workouts/validation.js";
 import { profileNameError } from "./features/profile/nameValidation.js";
 import { profileWeightError } from "./features/profile/weightValidation.js";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
@@ -1066,11 +1067,12 @@ export default function Overload() {
     const entry = activeSession.entries[entryIdx];
 	const w = parseFloat(entry.draftWeight);
 	const r = parseInt(entry.draftReps, 10);
-	const weightInvalid = isNaN(w) || w <= 0;
+	const weightMessage = workoutWeightError(entry.draftWeight);
+	const weightInvalid = Boolean(weightMessage);
 	const repsInvalid = isNaN(r) || r <= 0;
 
 	setWeightError(
-	  weightInvalid ? "重量は0より大きい値を入力してください" : ""
+	  weightMessage
 	);
 
 	setRepsError(
