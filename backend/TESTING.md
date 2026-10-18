@@ -65,3 +65,22 @@ requests return the same sets, while differing input for the same UUID returns
 `WorkoutServiceIntegrationTest` verifies HTTP registration/history, rollback,
 concurrent retry and profile changes against isolated MySQL. Its review regression
 uses 80kg, 60 minutes and 10 reps: the saved and restored total is 170.10kcal.
+
+## In-progress workout recovery
+
+Browser localStorage keeps the start time, start weight, entries, notes and unfinished
+inputs under a versioned per-user key. Each mutation acquires a Web Lock, compares
+the last observed value, then writes or removes it; stale tabs do not overwrite a
+newer draft. Web Locks require a supported browser on HTTPS or localhost.
+Initialization is read-only and storage failures remain visible with retry actions.
+
+Completion waits for queued writes before deciding whether sets exist, and persists
+the exact UUID, finish time and payload before POST. A storage failure prevents POST.
+Unknown network/server outcomes and history failures after POST keep that payload.
+Only confirmed POST rejection (400/404/422) resumes editing. HTTP 409 preserves the
+draft and offers history inspection or explicit discard. Draft cleanup occurs only
+after POST plus canonical history retrieval, or an explicit user discard.
+
+`tests/workout-draft.test.js` covers reload, same-tab ordering, tab conflicts, storage
+failures, frozen retries and rejection recovery. `tests/api-errors.test.js` verifies
+that HTTP status remains distinguishable from an unknown network failure.

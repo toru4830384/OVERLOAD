@@ -1,8 +1,9 @@
 import { workoutWeightError } from "./features/workouts/validation.js";
-import { getExercises, getProfile, getWorkoutHistory, saveProfile, saveWorkout } from "./api/client.js";
+import { ApiError, getExercises, getProfile, getWorkoutHistory, saveProfile, saveWorkout } from "./api/client.js";
 import { summarizeCalories } from "./features/workouts/history.js";
-import { workoutPayload } from "./features/workouts/registration.js";
 import { createHistoryLoader } from "./features/workouts/historyLoader.js";
+import { useWorkoutDraft } from "./features/workouts/useWorkoutDraft.js";
+import WorkoutDraftNotice from "./components/WorkoutDraftNotice.jsx";
 import { profileNameError } from "./features/profile/nameValidation.js";
 import { profileWeightError } from "./features/profile/weightValidation.js";
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
@@ -786,12 +787,13 @@ export default function Overload() {
   const [loaded, setLoaded] = useState(false);
   const [exercises, setExercises] = useState(DEFAULT_EXERCISES);
   const [sessions, setSessions] = useState([]);
-  const [activeSession, setActiveSession] = useState(null);
-  const pendingWorkout = useRef(null);
-  const [hasPendingWorkout, setHasPendingWorkout] = useState(false);
+  const draft = useWorkoutDraft(1);
+  const activeSession = draft.session;
+  const setActiveSession = draft.setSession;
   const [isSavingWorkout, setIsSavingWorkout] = useState(false);
   const savingWorkout = useRef(false);
   const [workoutError, setWorkoutError] = useState("");
+  const [saveConflict, setSaveConflict] = useState(false);
   const [catalogReady, setCatalogReady] = useState(false);
   const [catalogError, setCatalogError] = useState("");
   const [catalogReload, setCatalogReload] = useState(0);
@@ -799,8 +801,8 @@ export default function Overload() {
   const [historyReload, setHistoryReload] = useState(0);
   const [profileLoadError, setProfileLoadError] = useState("");
   const loadHistory = useMemo(() => createHistoryLoader(signal => getWorkoutHistory(1, signal), setSessions), []);
-  const editLocked = isSavingWorkout || hasPendingWorkout;
-  const workoutSaveError = workoutError || (hasPendingWorkout ? "保存結果の確認が必要です。同じ内容で完了を再試行してください。" : "");
+  const editLocked = isSavingWorkout || Boolean(draft.pendingPayload) || draft.errorKind === "conflict";
+  const workoutSaveError = workoutError || (draft.pendingPayload ? "保存結果の確認が必要です。同じ内容で完了を再試行してください。" : "");
   const [tab, setTab] = useState("workout");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerCategory, setPickerCategory] = useState(null);
@@ -974,14 +976,13 @@ export default function Overload() {
   }, [detailExercise]);
 
   function startWorkout() {
-    if (!catalogReady) return;
+    if (!catalogReady || draft.isPersisting || ["load", "clear", "conflict"].includes(draft.errorKind)) return;
     if (profileLoadError || profileWeightError(bodyWeightKg) || !["male", "female"].includes(gender)) {
       setTab("profile");
       return;
     }
     setWorkoutError("");
-    pendingWorkout.current = null;
-    setHasPendingWorkout(false);
+    setSaveConflict(false);
     setActiveSession({ id: crypto.randomUUID(), date: new Date().toISOString(), bodyWeightKg: Number(bodyWeightKg), entries: [] });
   }
 
@@ -989,7 +990,7 @@ export default function Overload() {
     setActiveSession((prev) => {
       if (!prev) return prev;
       if (prev.entries.some((e) => e.exerciseId === exId)) return prev;
-      return { ...prev, entries: [...prev.entries, { exerciseId: exId, sets: [], draftWeight: "", draftReps: "" }] };
+      return { ...prev, entries: [...prev.entries, { exerciseId: exId, exerciseName: exerciseMap[exId]?.name || "", sets: [], draftWeight: "", draftReps: "" }] };
     });
     setPickerOpen(false);
     setPickerCategory(null);
@@ -1054,21 +1055,22 @@ export default function Overload() {
 
   async function finishWorkout() {
     if (!activeSession || savingWorkout.current) return;
-    if (!activeSession.entries.some(entry => entry.sets.length > 0)) {
-      await setActiveSession(null);
-      setRestRunning(false);
-      setRestRemaining(null);
-      return;
-    }
     savingWorkout.current = true;
     setIsSavingWorkout(true);
     setWorkoutError("");
     setRestRunning(false);
+    let accepted = false;
     try {
-      if (!pendingWorkout.current) pendingWorkout.current = workoutPayload(activeSession);
-      setHasPendingWorkout(true);
-      const result = await saveWorkout(pendingWorkout.current);
-        const history = await loadHistory();
+      const payload = await draft.freezeForSave();
+      if (payload.exercises.length === 0) {
+        await draft.complete();
+        setRestRemaining(null);
+        return;
+      }
+      const result = await saveWorkout(payload);
+      accepted = true;
+      setSaveConflict(false);
+      const history = await loadHistory();
       const savedSession = history.find(session => session.id === result[0]?.sessionId);
       if (!savedSession) throw new Error("保存結果を取得できませんでした。同じ内容で再試行してください。");
       setCompletionSummary({
@@ -1077,11 +1079,14 @@ export default function Overload() {
         volume: savedSession.entries.reduce((sum, entry) => sum + entry.sets.reduce((total, set) => total + set.weight * set.reps, 0), 0),
         exerciseCount: savedSession.entries.length,
       });
-      pendingWorkout.current = null;
-      setHasPendingWorkout(false);
-      setActiveSession(null);
+      await draft.complete();
       setRestRemaining(null);
     } catch (error) {
+      // POST前の確定拒否だけ編集へ戻す。応答不明・保存後の確認失敗では同じ内容を再送する。
+      if (!accepted && error instanceof ApiError) {
+        if ([400, 404, 422].includes(error.status)) await draft.resumeAfterRejection(error.status);
+        setSaveConflict(error.status === 409);
+      }
       setWorkoutError(error.message);
     } finally {
       savingWorkout.current = false;
@@ -1091,9 +1096,9 @@ export default function Overload() {
 
   if (!loaded && !activeSession) {
     return (
-      <div style={{ background: COLORS.bg, minHeight: 500, display: "flex", alignItems: "center", justifyContent: "center", color: COLORS.steel, fontFamily: "Inter, sans-serif" }}>
+      <><WorkoutDraftNotice draft={draft} /><div style={{ background: COLORS.bg, minHeight: 500, display: "flex", alignItems: "center", justifyContent: "center", color: COLORS.steel, fontFamily: "Inter, sans-serif" }}>
         読み込み中...
-      </div>
+      </div></>
     );
   }
 
@@ -1243,6 +1248,17 @@ export default function Overload() {
         <button type="button" onClick={() => setHistoryReload(value => value + 1)}>再読み込み</button>
       </div>}
       {profileLoadError && <div role="alert" style={{ padding: 12, color: COLORS.amber }}>プロフィールを読み込めませんでした。{profileLoadError} 実施中の記録は保持しています。</div>}
+      <WorkoutDraftNotice draft={draft} />
+      {saveConflict && <div role="alert" style={{ padding: 12, color: COLORS.amber }}>
+        同じ識別子で別の内容が保存されています。現在の下書きは保持しています。再試行するか、履歴を確認してください。
+        <button type="button" onClick={async () => {
+          try { await loadHistory(); setTab("history"); } catch (error) { setWorkoutError(error.message); }
+        }}>履歴を確認</button>
+        <button type="button" onClick={async () => {
+          if (!window.confirm("現在の下書きを削除します。サーバーの保存済み記録は残ります。元に戻せません。")) return;
+          if (await draft.complete()) { setSaveConflict(false); setWorkoutError(""); }
+        }}>現在の下書きを破棄</button>
+      </div>}
       {/* Body */}
       <div style={{ flex: 1, overflowY: (pickerOpen || detailExercise || completionSummary) ? "hidden" : "auto", scrollbarGutter: "stable", padding: 16, paddingBottom: 90 }}>
         {tab === "workout" && (
@@ -1254,7 +1270,7 @@ export default function Overload() {
                   <Dumbbell size={40} color={COLORS.steelDim} style={{ marginBottom: 14, filter: `drop-shadow(0 0 10px rgba(240,168,46,0.35))` }} />
                 </div>
                 <div style={{ color: COLORS.steel, fontSize: 14, marginBottom: 20 }}>今日のワークアウトを開始しましょう</div>
-                <button type="button" className="btn-tactile" onClick={startWorkout} disabled={!catalogReady} style={{ background: COLORS.red, color: "#fff", border: "none", borderRadius: 10, padding: "14px 28px", fontSize: 15, fontWeight: 600, boxShadow: `0 4px 20px rgba(214,64,43,0.4)` }}>
+                <button type="button" className="btn-tactile" onClick={startWorkout} disabled={!catalogReady || draft.isPersisting || ["load", "clear", "conflict"].includes(draft.errorKind)} style={{ background: COLORS.red, color: "#fff", border: "none", borderRadius: 10, padding: "14px 28px", fontSize: 15, fontWeight: 600, boxShadow: `0 4px 20px rgba(214,64,43,0.4)` }}>
                   {gender === "" ? "プロフィールで性別を選択" : "ワークアウト開始"}
                 </button>
               </div>
@@ -1288,8 +1304,7 @@ export default function Overload() {
 			    </div>
 
                 {activeSession.entries.map((entry, idx) => {
-                  const ex = exerciseMap[entry.exerciseId];
-                  if (!ex) return null;
+                  const ex = exerciseMap[entry.exerciseId] || { id: entry.exerciseId, name: entry.exerciseName || `種目 #${entry.exerciseId}（情報未取得）` };
                   const pr = prMap[ex.id];
                   return (
                     <div key={entry.exerciseId} style={{ background: COLORS.surface, border: `1px solid ${COLORS.line}`, borderRadius: 12, padding: 14, marginBottom: 12 }}>
@@ -1414,7 +1429,7 @@ export default function Overload() {
 
                 </fieldset>
                 {workoutSaveError && <div role="alert" style={{ color: COLORS.amber, marginBottom: 12 }}>保存・確認を完了できませんでした。{workoutSaveError}</div>}
-                <button type="button" disabled={isSavingWorkout} className="btn-tactile" onClick={finishWorkout} style={{ width: "100%", background: COLORS.green, border: "none", borderRadius: 10, padding: "13px", color: "#fff", fontSize: 14, fontWeight: 600 }}>
+                <button type="button" disabled={isSavingWorkout || draft.isPersisting} className="btn-tactile" onClick={finishWorkout} style={{ width: "100%", background: COLORS.green, border: "none", borderRadius: 10, padding: "13px", color: "#fff", fontSize: 14, fontWeight: 600 }}>
                   {isSavingWorkout ? "保存中..." : workoutSaveError ? "保存を再試行" : "ワークアウトを終了して保存"}
                 </button>
               </>
