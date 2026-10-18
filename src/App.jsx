@@ -1,4 +1,4 @@
-import { workoutWeightError } from "./features/workouts/validation.js";
+import { workoutWeightError, workoutRepetitionsError, parseWorkoutRepetitions, WORKOUT_REPETITIONS_MIN, WORKOUT_REPETITIONS_MAX } from "./features/workouts/validation.js";
 import { ApiError, getExercises, getProfile, getWorkoutHistory, saveProfile, saveWorkout } from "./api/client.js";
 import { summarizeCalories } from "./features/workouts/history.js";
 import { createHistoryLoader } from "./features/workouts/historyLoader.js";
@@ -1007,18 +1007,19 @@ export default function Overload() {
 
   function addSet(entryIdx) {
     const entry = activeSession.entries[entryIdx];
-	const w = parseFloat(entry.draftWeight);
-	const r = parseInt(entry.draftReps, 10);
+	const w = Number(entry.draftWeight);
+	const r = parseWorkoutRepetitions(entry.draftReps);
 	const weightMessage = workoutWeightError(entry.draftWeight);
 	const weightInvalid = Boolean(weightMessage);
-	const repsInvalid = isNaN(r) || r <= 0;
+	const repsMessage = workoutRepetitionsError(entry.draftReps);
+	const repsInvalid = Boolean(repsMessage);
 
 	setWeightError(
 	  weightMessage
 	);
 
 	setRepsError(
-	  repsInvalid ? "回数は0より大きい値を入力してください" : ""
+	  repsMessage
 	);
 
 	if (weightInvalid || repsInvalid) return;
@@ -1385,6 +1386,9 @@ export default function Overload() {
 					    <input
 					      type="number"
 					      inputMode="numeric"
+					      min={WORKOUT_REPETITIONS_MIN}
+					      max={WORKOUT_REPETITIONS_MAX}
+					      step={1}
 					      placeholder="回数"
 					      value={entry.draftReps}
 					      onChange={(e) => updateDraft(idx, "draftReps", e.target.value)}

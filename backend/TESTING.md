@@ -84,3 +84,11 @@ after POST plus canonical history retrieval, or an explicit user discard.
 `tests/workout-draft.test.js` covers reload, same-tab ordering, tab conflicts, storage
 failures, frozen retries and rejection recovery. `tests/api-errors.test.js` verifies
 that HTTP status remains distinguishable from an unknown network failure.
+
+## Repetitions input
+
+Convert the complete frontend value with Number, then require an integer from 1
+through 2147483647 before adding a set. Decimal input is rejected; 1e2 becomes 100.
+Jackson float-to-integer coercion is disabled so direct JSON clients cannot bypass
+the rule by sending decimals for reps, IDs or set numbers. `tests/repetitions.test.js`
+and `WorkoutIntegerInputContractTest` cover those boundaries and unchanged values.
