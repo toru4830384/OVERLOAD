@@ -82,4 +82,23 @@ public class GlobalExceptionHandler {
         detail.setTitle("Invalid request");
         return detail;
     }
+    /** @param e 保存識別子の競合
+     * @return 409エラー情報
+     */
+    @ExceptionHandler(RequestConflictException.class)
+    public ProblemDetail handleRequestConflict(RequestConflictException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
+    }
+    /**
+     * 計算結果がDBの保存可能な桁数を超える場合、入力の修正を要求する。
+     * @param e カロリー上限超過
+     * @return 422エラー情報
+     */
+    @ExceptionHandler(WorkoutCaloriesOutOfRangeException.class)
+    public ProblemDetail handleCaloriesOutOfRange(WorkoutCaloriesOutOfRangeException e) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY, e.getMessage());
+        detail.setProperty("code", "WORKOUT_CALORIES_OUT_OF_RANGE");
+        return detail;
+    }
+
 }

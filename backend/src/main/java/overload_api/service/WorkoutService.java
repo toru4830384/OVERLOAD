@@ -1,8 +1,8 @@
 package overload_api.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-import overload_api.time.WorkoutTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import overload_api.exception.ResourceNotFoundException;
+import overload_api.exception.WorkoutCaloriesOutOfRangeException;
 import overload_api.mapper.ExerciseMapper;
 import overload_api.mapper.UserMapper;
 import overload_api.mapper.WorkoutSessionMapper;
@@ -23,6 +24,7 @@ import overload_api.service.dto.WorkoutHistoryResponse;
 import overload_api.service.dto.WorkoutHistorySetResponse;
 import overload_api.service.dto.WorkoutRequest;
 import overload_api.service.command.WorkoutCommand;
+import overload_api.time.WorkoutTime;
 
 /**
  * ワークアウトに関する業務処理を提供するサービス。
@@ -61,11 +63,14 @@ public class WorkoutService {
      * @return 登録したワークアウトセット一覧
      * @throws ResourceNotFoundException ユーザーまたは種目が存在しない場合
      * @throws IllegalArgumentException 必須項目や種目・セット情報が不正な場合
+     * @throws WorkoutCaloriesOutOfRangeException 計算済みカロリーが保存範囲を超える場合
      */
     @Transactional
     public List<WorkoutSet> create(WorkoutRequest request) {
         WorkoutCommand command = WorkoutCommand.from(request);
-        LocalDateTime finishedAt = WorkoutTime.toDatabaseTime(WorkoutTime.now());
+        // 計算後の保存条件も、Mapperへアクセスする前に検証する。
+        BigDecimal totalCalories = WorkoutRegistration.calories(command);
+        LocalDateTime finishedAt = WorkoutTime.toDatabaseTime(command.finishedAt());
         LocalDateTime startedAt = WorkoutTime.toDatabaseTime(command.startedAt());
         if (userMapper.findById(command.userId()) == null) {
             throw new ResourceNotFoundException("User not found");
@@ -84,10 +89,24 @@ public class WorkoutService {
         workoutSession.setUserId(command.userId());
         // 既存DBと同じ日本時間へ変換し、実開始時刻を保存する。
         workoutSession.setStartedAt(startedAt);
+        workoutSession.setBodyWeightKg(command.bodyWeightKg());
+        workoutSession.setTotalCalories(totalCalories);
+        workoutSession.setClientRequestId(command.clientRequestId().toLowerCase(java.util.Locale.ROOT));
+        workoutSession.setRequestHash(WorkoutRegistration.fingerprint(command));
 
         workoutSessionMapper.insert(workoutSession);
 
         Long sessionId = workoutSession.getId();
+        // UNIQUE制約とINSERTの行ロックで同時再送を直列化する。
+        WorkoutSession persisted = workoutSessionMapper.findByClientRequestId(
+                command.userId(), workoutSession.getClientRequestId());
+        if (persisted != null && !workoutSession.getRequestHash().equals(persisted.getRequestHash())) {
+            throw new overload_api.exception.RequestConflictException("同じ保存識別子で異なる内容は送信できません");
+        }
+        List<WorkoutSet> existing = workoutSetMapper.findBySessionId(sessionId);
+        if (!existing.isEmpty()) {
+            return existing;
+        }
         List<WorkoutSet> workoutSets = new ArrayList<>();
 
         /*
@@ -163,6 +182,9 @@ public class WorkoutService {
                         row.getSessionId());
                 response.setStartedAt(
                         row.getStartedAt());
+                response.setFinishedAt(row.getFinishedAt());
+                response.setBodyWeightKg(row.getBodyWeightKg());
+                response.setTotalCalories(row.getTotalCalories());
                 response.setExerciseId(
                         row.getExerciseId());
                 response.setExerciseName(

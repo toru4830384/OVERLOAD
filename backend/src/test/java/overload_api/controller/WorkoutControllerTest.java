@@ -69,6 +69,9 @@ class WorkoutControllerTest {
                 {
                     "userId": 1,
                     "startedAt": "2026-01-01T10:00:00+09:00",
+                    "finishedAt": "2026-01-01T11:00:00+09:00",
+                    "bodyWeightKg": 70.00,
+                    "clientRequestId": "12345678-1234-1234-1234-123456789abc",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -143,6 +146,9 @@ class WorkoutControllerTest {
                 {
                     "userId": 1,
                     "startedAt": "2026-01-01T10:00:00+09:00",
+                    "finishedAt": "2026-01-01T11:00:00+09:00",
+                    "bodyWeightKg": 70.00,
+                    "clientRequestId": "12345678-1234-1234-1234-123456789abc",
                     "exercises": [
                         {
                             "exerciseId": 9999,
@@ -198,6 +204,9 @@ class WorkoutControllerTest {
                 {
                     "userId": null,
                     "startedAt": "2026-01-01T10:00:00+09:00",
+                    "finishedAt": "2026-01-01T11:00:00+09:00",
+                    "bodyWeightKg": 70.00,
+                    "clientRequestId": "12345678-1234-1234-1234-123456789abc",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -241,6 +250,9 @@ class WorkoutControllerTest {
                 {
                     "userId": 1,
                     "startedAt": "2026-01-01T10:00:00+09:00",
+                    "finishedAt": "2026-01-01T11:00:00+09:00",
+                    "bodyWeightKg": 70.00,
+                    "clientRequestId": "12345678-1234-1234-1234-123456789abc",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -284,6 +296,9 @@ class WorkoutControllerTest {
                 {
                     "userId": 1,
                     "startedAt": "2026-01-01T10:00:00+09:00",
+                    "finishedAt": "2026-01-01T11:00:00+09:00",
+                    "bodyWeightKg": 70.00,
+                    "clientRequestId": "12345678-1234-1234-1234-123456789abc",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -327,6 +342,9 @@ class WorkoutControllerTest {
                 {
                     "userId": 1,
                     "startedAt": "2026-01-01T10:00:00+09:00",
+                    "finishedAt": "2026-01-01T11:00:00+09:00",
+                    "bodyWeightKg": 70.00,
+                    "clientRequestId": "12345678-1234-1234-1234-123456789abc",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -370,6 +388,9 @@ class WorkoutControllerTest {
                 {
                     "userId": 1,
                     "startedAt": "2026-01-01T10:00:00+09:00",
+                    "finishedAt": "2026-01-01T11:00:00+09:00",
+                    "bodyWeightKg": 70.00,
+                    "clientRequestId": "12345678-1234-1234-1234-123456789abc",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -413,6 +434,9 @@ class WorkoutControllerTest {
                 {
                     "userId": 1,
                     "startedAt": "2026-01-01T10:00:00+09:00",
+                    "finishedAt": "2026-01-01T11:00:00+09:00",
+                    "bodyWeightKg": 70.00,
+                    "clientRequestId": "12345678-1234-1234-1234-123456789abc",
                     "exercises": null
                 }
                 """;
@@ -444,6 +468,9 @@ class WorkoutControllerTest {
                 {
                     "userId": 1,
                     "startedAt": "2026-01-01T10:00:00+09:00",
+                    "finishedAt": "2026-01-01T11:00:00+09:00",
+                    "bodyWeightKg": 70.00,
+                    "clientRequestId": "12345678-1234-1234-1234-123456789abc",
                     "exercises": []
                 }
                 """;
@@ -475,6 +502,9 @@ class WorkoutControllerTest {
                 {
                     "userId": 1,
                     "startedAt": "2026-01-01T10:00:00+09:00",
+                    "finishedAt": "2026-01-01T11:00:00+09:00",
+                    "bodyWeightKg": 70.00,
+                    "clientRequestId": "12345678-1234-1234-1234-123456789abc",
                     "exercises": [
                         null
                     ]
@@ -509,6 +539,9 @@ class WorkoutControllerTest {
                 {
                     "userId": 1,
                     "startedAt": "2026-01-01T10:00:00+09:00",
+                    "finishedAt": "2026-01-01T11:00:00+09:00",
+                    "bodyWeightKg": 70.00,
+                    "clientRequestId": "12345678-1234-1234-1234-123456789abc",
                     "exercises": [
                         {
                             "exerciseId": null,
@@ -553,6 +586,9 @@ class WorkoutControllerTest {
                 {
                     "userId": 1,
                     "startedAt": "2026-01-01T10:00:00+09:00",
+                    "finishedAt": "2026-01-01T11:00:00+09:00",
+                    "bodyWeightKg": 70.00,
+                    "clientRequestId": "12345678-1234-1234-1234-123456789abc",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -591,6 +627,9 @@ class WorkoutControllerTest {
                 {
                     "userId": 1,
                     "startedAt": "2026-01-01T10:00:00+09:00",
+                    "finishedAt": "2026-01-01T11:00:00+09:00",
+                    "bodyWeightKg": 70.00,
+                    "clientRequestId": "12345678-1234-1234-1234-123456789abc",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -628,6 +667,9 @@ class WorkoutControllerTest {
                 {
                     "userId": 1,
                     "startedAt": "2026-01-01T10:00:00+09:00",
+                    "finishedAt": "2026-01-01T11:00:00+09:00",
+                    "bodyWeightKg": 70.00,
+                    "clientRequestId": "12345678-1234-1234-1234-123456789abc",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -668,6 +710,9 @@ class WorkoutControllerTest {
                 {
                     "userId": 1,
                     "startedAt": "2026-01-01T10:00:00+09:00",
+                    "finishedAt": "2026-01-01T11:00:00+09:00",
+                    "bodyWeightKg": 70.00,
+                    "clientRequestId": "12345678-1234-1234-1234-123456789abc",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -712,6 +757,9 @@ class WorkoutControllerTest {
                 {
                     "userId": 1,
                     "startedAt": "2026-01-01T10:00:00+09:00",
+                    "finishedAt": "2026-01-01T11:00:00+09:00",
+                    "bodyWeightKg": 70.00,
+                    "clientRequestId": "12345678-1234-1234-1234-123456789abc",
                     "exercises": [
                         {
                             "exerciseId": 1,
@@ -843,7 +891,10 @@ class WorkoutControllerTest {
         when(workoutService.create(any())).thenReturn(List.of());
         String body = """
                 {"userId":42,
-                    "startedAt": "2026-01-01T10:00:00+09:00","exercises":[
+                    "startedAt": "2026-01-01T10:00:00+09:00",
+                    "finishedAt": "2026-01-01T11:00:00+09:00",
+                    "bodyWeightKg": 70.00,
+                    "clientRequestId": "12345678-1234-1234-1234-123456789abc","exercises":[
                   {"exerciseId":7,"note":"first","sets":[
                     {"setNumber":1,"weightKg":50.25,"reps":10},
                     {"setNumber":2,"weightKg":55.50,"reps":8}]},
@@ -858,9 +909,11 @@ class WorkoutControllerTest {
         var captor = ArgumentCaptor.forClass(overload_api.service.dto.WorkoutRequest.class);
         verify(workoutService).create(captor.capture());
         var request = captor.getValue();
-        assertEquals(java.time.OffsetDateTime.parse("2026-01-01T10:00:00+09:00").toInstant(),
-                captor.getValue().getStartedAt().toInstant());
+        assertEquals(java.time.OffsetDateTime.parse("2026-01-01T10:00:00+09:00").toInstant(), captor.getValue().getStartedAt().toInstant());
         assertEquals(42L, request.getUserId());
+        assertEquals(java.time.Instant.parse("2026-01-01T02:00:00Z"), request.getFinishedAt().toInstant());
+        assertEquals(new BigDecimal("70.00"), request.getBodyWeightKg());
+        assertEquals("12345678-1234-1234-1234-123456789abc", request.getClientRequestId());
         assertEquals(List.of(7L, 9L), request.getExercises().stream()
                 .map(overload_api.service.dto.WorkoutExerciseRequest::getExerciseId).toList());
         assertEquals(List.of("first", "second"), request.getExercises().stream()

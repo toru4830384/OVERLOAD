@@ -1,11 +1,15 @@
 package overload_api.controller.dto;
 
-import java.util.List;
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+
+import overload_api.domain.validation.BodyWeight;
+import overload_api.domain.validation.WorkoutRequestIdentifier;
 
 /**
  * ワークアウト登録時のリクエスト情報を保持するDTO。
@@ -19,6 +23,8 @@ public class WorkoutRequest {
     private OffsetDateTime startedAt;
 
     /**
+     * 実開始日時を取得する。
+     *
      * @return 実開始日時
      */
     public OffsetDateTime getStartedAt() {
@@ -26,6 +32,8 @@ public class WorkoutRequest {
     }
 
     /**
+     * 実開始日時を設定する。
+     *
      * @param startedAt 実開始日時
      */
     public void setStartedAt(OffsetDateTime startedAt) {
@@ -86,4 +94,46 @@ public class WorkoutRequest {
         this.exercises = exercises;
     }
 
+
+    /** 終了操作の日時。再試行でも同じ値を使う。 */
+    @NotNull
+    private OffsetDateTime finishedAt;
+
+    /** @return 終了操作の日時。再試行でも同じ値を使う。 */
+    public OffsetDateTime getFinishedAt() {
+        return finishedAt;
+    }
+
+    /** @param finishedAt 終了操作の日時。再試行でも同じ値を使う。 */
+    public void setFinishedAt(OffsetDateTime finishedAt) {
+        this.finishedAt = finishedAt;
+    }
+
+    /** 開始時点の体重（kg）。 */
+    @BodyWeight
+    private BigDecimal bodyWeightKg;
+
+    /** @return 開始時点の体重（kg）。 */
+    public BigDecimal getBodyWeightKg() {
+        return bodyWeightKg;
+    }
+
+    /** @param bodyWeightKg 開始時点の体重（kg）。 */
+    public void setBodyWeightKg(BigDecimal bodyWeightKg) {
+        this.bodyWeightKg = bodyWeightKg;
+    }
+
+    /** 再送を識別するUUID。 */
+    @WorkoutRequestIdentifier
+    private String clientRequestId;
+
+    /** @return 再送を識別するUUID。 */
+    public String getClientRequestId() {
+        return clientRequestId;
+    }
+
+    /** @param clientRequestId 再送を識別するUUID。 */
+    public void setClientRequestId(String clientRequestId) {
+        this.clientRequestId = clientRequestId;
+    }
 }

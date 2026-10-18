@@ -44,3 +44,24 @@ Service transaction.
 
 Generated IDs in fixtures come from the INSERT's generated keys, not a later
 `LAST_INSERT_ID()` call on a potentially different pooled connection.
+
+
+## Workout calorie snapshots and retry persistence
+
+Apply `db/migrations/20261010_workout_snapshot.sql` once before starting this
+backend against an existing database. It adds nullable start-time weight and
+calorie snapshots, a request UUID, an input fingerprint, and a per-user unique
+request key. Existing sessions keep null snapshots; historical values are not
+inferred from the current profile. The test schema includes these additions.
+
+POST `/api/workouts` requires the start action's `startedAt`, the completion
+operation's `finishedAt`, the start-time `bodyWeightKg`, and `clientRequestId`.
+Retries must preserve this UUID, completion time, weight and all set input.
+The Service stores METs calories including rest, rounded to two decimals; history
+returns this stored result after reload and profile changes. Concurrent identical
+requests return the same sets, while differing input for the same UUID returns
+409. A calorie total outside DECIMAL(12,2) returns 422 before DB writes.
+
+`WorkoutServiceIntegrationTest` verifies HTTP registration/history, rollback,
+concurrent retry and profile changes against isolated MySQL. Its review regression
+uses 80kg, 60 minutes and 10 reps: the saved and restored total is 170.10kcal.

@@ -1,0 +1,26 @@
+package overload_api.domain.validation;
+
+import java.lang.annotation.Documented;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
+import static java.lang.annotation.ElementType.*;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+import jakarta.validation.Constraint;
+import jakarta.validation.Payload;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.NotNull;
+
+/** 登録時体重のDB保存条件を定義する。 HTTP DTOと登録Commandが共有する。 */
+@Documented
+@Target({FIELD, PARAMETER, RECORD_COMPONENT, ANNOTATION_TYPE, TYPE_USE})
+@Retention(RUNTIME)
+@Constraint(validatedBy = {})
+@NotNull(message = "体重は必須です")
+@DecimalMin(value = "0.0", inclusive = false, message = "体重は0より大きい値を入力してください")
+@Digits(integer = 3, fraction = 2, message = "体重は999.99kg以下、小数第2位まで入力してください")
+public @interface BodyWeight {
+    String message() default "入力値が不正です";
+    Class<?>[] groups() default {};
+    Class<? extends Payload>[] payload() default {};
+}

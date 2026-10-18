@@ -4,12 +4,14 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import jakarta.validation.Valid;
-import jakarta.validation.Validation;
-import jakarta.validation.Validator;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import overload_api.domain.validation.BodyWeight;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
 import overload_api.domain.validation.WorkoutNote;
 import overload_api.domain.validation.WorkoutRepetitions;
+import overload_api.domain.validation.WorkoutRequestIdentifier;
 import overload_api.domain.validation.WorkoutSetNumber;
 import overload_api.domain.validation.WorkoutWeight;
 import overload_api.service.dto.WorkoutRequest;
@@ -22,16 +24,24 @@ import overload_api.time.WorkoutTime;
 public record WorkoutCommand(
         @NotNull Long userId,
         @NotNull OffsetDateTime startedAt,
+        @NotNull OffsetDateTime finishedAt,
+        @BodyWeight BigDecimal bodyWeightKg,
+        @WorkoutRequestIdentifier String clientRequestId,
         @NotEmpty List<@NotNull @Valid Exercise> exercises) {
 
-    /** 保存条件と開始日時が未来でないことを検証する。 */
-    public WorkoutCommand(Long userId, OffsetDateTime startedAt, List<Exercise> exercises) {
+    /** 保存条件と日時の順序を検証する。 */
+    public WorkoutCommand(Long userId, OffsetDateTime startedAt, OffsetDateTime finishedAt,
+            BigDecimal bodyWeightKg, String clientRequestId, List<Exercise> exercises) {
         this.userId = userId;
         this.startedAt = startedAt;
+        this.finishedAt = finishedAt;
+        this.bodyWeightKg = bodyWeightKg;
+        this.clientRequestId = clientRequestId;
         this.exercises = immutable(exercises);
         validate(this);
-        if (startedAt.toInstant().isAfter(WorkoutTime.now().toInstant())) {
-            throw new IllegalArgumentException("Workout start time must not be in the future");
+        if (finishedAt.toInstant().isBefore(startedAt.toInstant())
+                || finishedAt.toInstant().isAfter(WorkoutTime.now().toInstant())) {
+            throw new IllegalArgumentException("Workout timestamps must be ordered and not in the future");
         }
     }
 
@@ -48,7 +58,8 @@ public record WorkoutCommand(
             }).toList();
             return new Exercise(exercise.getExerciseId(), exercise.getNote(), sets);
         }).toList();
-        return new WorkoutCommand(input.getUserId(), input.getStartedAt(), exercises);
+        return new WorkoutCommand(input.getUserId(), input.getStartedAt(), input.getFinishedAt(),
+                input.getBodyWeightKg(), input.getClientRequestId(), exercises);
     }
 
     /** 種目・メモ・セットの変更不能な値。 */

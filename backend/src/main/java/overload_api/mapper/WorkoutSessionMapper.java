@@ -29,7 +29,9 @@ public interface WorkoutSessionMapper {
             id,
             user_id AS userId,
             started_at AS startedAt,
-            finished_at AS finishedAt
+            finished_at AS finishedAt,
+            body_weight_kg AS bodyWeightKg, total_calories AS totalCalories,
+            client_request_id AS clientRequestId, request_hash AS requestHash
         FROM workout_sessions
         ORDER BY id
         """)
@@ -43,12 +45,13 @@ public interface WorkoutSessionMapper {
     @Insert("""
         INSERT INTO workout_sessions (
             user_id,
-            started_at
+            started_at, body_weight_kg, total_calories, client_request_id, request_hash
         )
         VALUES (
             #{userId},
-            #{startedAt}
+            #{startedAt}, #{bodyWeightKg}, #{totalCalories}, #{clientRequestId}, #{requestHash}
         )
+        ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)
         """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
     void insert(WorkoutSession workoutSession);
@@ -68,4 +71,16 @@ public interface WorkoutSessionMapper {
             @Param("id") Long id,
             @Param("finishedAt") LocalDateTime finishedAt);
 
+    /** 登録済みの再送識別子を取得する。
+     * @param userId ユーザーID
+     * @param clientRequestId 再送識別UUID
+     * @return セッション。未登録はnull
+     */
+    @Select("""
+        SELECT id, user_id AS userId, request_hash AS requestHash
+        FROM workout_sessions WHERE user_id = #{userId} AND client_request_id = #{clientRequestId}
+        FOR UPDATE
+        """)
+    WorkoutSession findByClientRequestId(@Param("userId") Long userId,
+            @Param("clientRequestId") String clientRequestId);
 }

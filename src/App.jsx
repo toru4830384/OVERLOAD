@@ -1,7 +1,11 @@
 import { workoutWeightError } from "./features/workouts/validation.js";
+import { getExercises, getProfile, getWorkoutHistory, saveProfile, saveWorkout } from "./api/client.js";
+import { summarizeCalories } from "./features/workouts/history.js";
+import { workoutPayload } from "./features/workouts/registration.js";
+import { createHistoryLoader } from "./features/workouts/historyLoader.js";
 import { profileNameError } from "./features/profile/nameValidation.js";
 import { profileWeightError } from "./features/profile/weightValidation.js";
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Plus, Play, Pause, Check, X, ChevronDown, ChevronUp, ChevronLeft, Dumbbell, History, ListChecks, Timer, Trash2, User } from "lucide-react";
 
 const COLORS = {
@@ -243,7 +247,6 @@ const EQUIPMENT_LABELS = {
 // ウェイトトレーニング(挙上中、一般的な強度)は MET 5.0、セット間の休憩中は MET 2.0(立って休む程度)を採用。
 // 1レップあたりの挙上時間は目安として3秒と仮定して算出(あくまで概算値)。
 const WEIGHT_TRAINING_MET = 5.0;
-const REST_MET = 2.0;
 const SECONDS_PER_REP = 3;
 function caloriesForMinutes(met, bodyWeightKg, minutes) {
   if (!bodyWeightKg || minutes <= 0) return 0;
@@ -784,6 +787,20 @@ export default function Overload() {
   const [exercises, setExercises] = useState(DEFAULT_EXERCISES);
   const [sessions, setSessions] = useState([]);
   const [activeSession, setActiveSession] = useState(null);
+  const pendingWorkout = useRef(null);
+  const [hasPendingWorkout, setHasPendingWorkout] = useState(false);
+  const [isSavingWorkout, setIsSavingWorkout] = useState(false);
+  const savingWorkout = useRef(false);
+  const [workoutError, setWorkoutError] = useState("");
+  const [catalogReady, setCatalogReady] = useState(false);
+  const [catalogError, setCatalogError] = useState("");
+  const [catalogReload, setCatalogReload] = useState(0);
+  const [historyError, setHistoryError] = useState("");
+  const [historyReload, setHistoryReload] = useState(0);
+  const [profileLoadError, setProfileLoadError] = useState("");
+  const loadHistory = useMemo(() => createHistoryLoader(signal => getWorkoutHistory(1, signal), setSessions), []);
+  const editLocked = isSavingWorkout || hasPendingWorkout;
+  const workoutSaveError = workoutError || (hasPendingWorkout ? "保存結果の確認が必要です。同じ内容で完了を再試行してください。" : "");
   const [tab, setTab] = useState("workout");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerCategory, setPickerCategory] = useState(null);
@@ -813,36 +830,28 @@ export default function Overload() {
   });
   const [selectedDay, setSelectedDay] = useState(null);
 
-  // APIから種目一覧を取得
+  // 種目を取得できなくても、復元した下書きは表示・編集する。
   useEffect(() => {
-    fetch("http://localhost:8080/api/exercises")
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("種目一覧の取得に失敗しました");
-        }
-        return res.json();
-      })
-      .then((data) => {
-        console.log("APIから取得した種目:", data);
-        setExercises(data);
-      })
-      .catch((error) => {
-        console.error("種目一覧取得エラー:", error);
-      });
-  }, []);
+    const controller = new AbortController();
+    getExercises(controller.signal).then(data => {
+      if (controller.signal.aborted) return;
+      setExercises(data);
+      setCatalogReady(true);
+      setCatalogError("");
+    }).catch(error => {
+      if (controller.signal.aborted) return;
+      setCatalogReady(false);
+      setCatalogError(error.message);
+    });
+    return () => controller.abort();
+  }, [catalogReload]);
 
   // load
   useEffect(() => {
     (async () => {
       try {
         // プロフィールはJava APIから取得
-        const userRes = await fetch("http://localhost:8080/api/users/1");
-
-        if (!userRes.ok) {
-          throw new Error("プロフィールの取得に失敗しました");
-        }
-
-        const user = await userRes.json();
+        const user = await getProfile(1);
 
         setUserName(user.name || "");
         setGender(["male", "female"].includes(user.gender) ? user.gender : "");
@@ -852,81 +861,23 @@ export default function Overload() {
         console.log("APIから取得したプロフィール:", user);
 
       } catch (e) {
-        console.error("プロフィール・データ読み込みエラー:", e);
+        setProfileLoadError(e.message);
       } finally {
         setLoaded(true);
       }
     })();
   }, []);
 
-  // APIから履歴を取得
+  // 保存済みの計算結果を復元し、古い取得応答で完了後の一覧を戻さない。
   useEffect(() => {
-    fetch("http://localhost:8080/api/workouts/history?user_id=1")
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("履歴の取得に失敗しました");
-        }
-        return res.json();
-      })
-      .then((data) => {
-        console.log("APIから取得した履歴:", data);
-
-		const grouped = {};
-
-		data.forEach((item) => {
-		  if (!grouped[item.sessionId]) {
-		    grouped[item.sessionId] = {
-		      id: item.sessionId,
-		      date: item.startedAt,
-		      totalCalories: 0,
-		      entries: [],
-		    };
-		  }
-
-		  grouped[item.sessionId].entries.push({
-		    exerciseId: item.exerciseId,
-		    note: item.note || "",
-		    sets: item.sets.map((set) => ({
-		      weight: Number(set.weightKg),
-		      reps: set.reps,
-		    })),
-		  });
-		});
-
-		const historySessions = Object.values(grouped).map((session) => {
-		  const activeMinutes = session.entries.reduce(
-		    (sum, entry) =>
-		      sum +
-		      entry.sets.reduce(
-		        (setSum, set) =>
-		          setSum + (set.reps * SECONDS_PER_REP) / 60,
-		        0
-		      ),
-		    0
-		  );
-
-		  const totalCalories = caloriesForMinutes(
-		    WEIGHT_TRAINING_MET,
-		    bodyWeightKg,
-		    activeMinutes
-		  );
-
-		  return {
-		    ...session,
-		    totalCalories,
-		  };
-		});
-		
-		setSessions(
-		  historySessions.sort(
-		    (a, b) => new Date(b.date) - new Date(a.date)
-		  )
-		);
-      })
-      .catch((error) => {
-        console.error("履歴取得エラー:", error);
-      });
-  }, []);
+    const controller = new AbortController();
+    loadHistory(controller.signal).then(() => {
+      if (!controller.signal.aborted) setHistoryError("");
+    }).catch(error => {
+      if (!controller.signal.aborted) setHistoryError(error.message);
+    });
+    return () => controller.abort();
+  }, [loadHistory, historyReload]);
 
   // プロフィールをJava APIへ自動保存
   useEffect(() => {
@@ -934,23 +885,9 @@ export default function Overload() {
 
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch("http://localhost:8080/api/users/1", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: userName,
-            gender: gender,
-            age: Number(age),
-            bodyWeightKg:
-              Number(bodyWeightKg),
-          }),
+        await saveProfile(1, {
+          name: userName, gender, age: Number(age), bodyWeightKg: Number(bodyWeightKg),
         });
-
-        if (!res.ok) {
-          throw new Error("プロフィール保存に失敗しました");
-        }
 
         console.log("プロフィール保存成功");
       } catch (error) {
@@ -1037,11 +974,15 @@ export default function Overload() {
   }, [detailExercise]);
 
   function startWorkout() {
-    if (!["male", "female"].includes(gender)) {
+    if (!catalogReady) return;
+    if (profileLoadError || profileWeightError(bodyWeightKg) || !["male", "female"].includes(gender)) {
       setTab("profile");
       return;
     }
-    setActiveSession({ id: "s-" + Date.now(), date: new Date().toISOString(), entries: [] });
+    setWorkoutError("");
+    pendingWorkout.current = null;
+    setHasPendingWorkout(false);
+    setActiveSession({ id: crypto.randomUUID(), date: new Date().toISOString(), bodyWeightKg: Number(bodyWeightKg), entries: [] });
   }
 
   function addExerciseToSession(exId) {
@@ -1112,112 +1053,43 @@ export default function Overload() {
   }
 
   async function finishWorkout() {
-    if (!activeSession) return;
-
-    const hasSets = activeSession.entries.some((e) => e.sets.length > 0);
-
-    if (hasSets) {
-      const activeMinutes = activeSession.entries.reduce(
-        (sum, e) =>
-          sum +
-          e.sets.reduce(
-            (s2, set) => s2 + (set.reps * SECONDS_PER_REP) / 60,
-            0
-          ),
-        0
-      );
-
-      const elapsedMinutes = Math.max(
-        0,
-        (Date.now() - new Date(activeSession.date).getTime()) / 60000
-      );
-
-      const restMinutes = Math.max(0, elapsedMinutes - activeMinutes);
-      const activeCalories = caloriesForMinutes(
-        WEIGHT_TRAINING_MET,
-        bodyWeightKg,
-        activeMinutes
-      );
-      const restCalories = caloriesForMinutes(
-        REST_MET,
-        bodyWeightKg,
-        restMinutes
-      );
-      const totalCalories = activeCalories + restCalories;
-
-	  console.log("activeMinutes:", activeMinutes);
-	  console.log("bodyWeightKg:", bodyWeightKg);
-	  console.log("activeCalories:", activeCalories);
-	  console.log("restCalories:", restCalories);
-	  console.log("totalCalories:", totalCalories);
-	  
-      const totalVolume = activeSession.entries.reduce(
-        (sum, e) =>
-          sum +
-          e.sets.reduce(
-            (s2, set) => s2 + set.weight * set.reps,
-            0
-          ),
-        0
-      );
-
-      const clean = {
-        ...activeSession,
-        totalCalories,
-        entries: activeSession.entries
-          .filter((e) => e.sets.length > 0)
-          .map(({ draftWeight, draftReps, ...rest }) => rest),
-      };
-
-      // ワークアウト保存APIへ送信
-      try {
-		// noteは種目単位で扱うため、セットごとには設定しない。
-		const requestBody = {
-		  userId: 1,
-		  startedAt: clean.date,
-		  exercises: clean.entries.map((entry) => ({
-		    exerciseId: entry.exerciseId,
-		    note: entry.note || "",
-		    sets: entry.sets.map((set, index) => ({
-		      setNumber: index + 1,
-		      weightKg: set.weight,
-		      reps: set.reps,
-		    })),
-		  })),
-		};
-
-		const res = await fetch("http://localhost:8080/api/workouts", {
-		  method: "POST",
-		  headers: {
-		    "Content-Type": "application/json",
-		  },
-		  body: JSON.stringify(requestBody),
-		});
-
-		if (!res.ok) {
-		  throw new Error("ワークアウト保存に失敗しました");
-		}
-
-        console.log("ワークアウト保存成功");
-      } catch (error) {
-        console.error("ワークアウト保存エラー:", error);
-        return;
-      }
-
-      setSessions((prev) => [clean, ...prev]);
-      setCompletionSummary({
-        calories: totalCalories,
-        volume: totalVolume,
-        exerciseCount: clean.entries.length,
-      });
+    if (!activeSession || savingWorkout.current) return;
+    if (!activeSession.entries.some(entry => entry.sets.length > 0)) {
+      await setActiveSession(null);
+      setRestRunning(false);
+      setRestRemaining(null);
+      return;
     }
-
-    setActiveSession(null);
+    savingWorkout.current = true;
+    setIsSavingWorkout(true);
+    setWorkoutError("");
     setRestRunning(false);
-    setRestRemaining(null);
+    try {
+      if (!pendingWorkout.current) pendingWorkout.current = workoutPayload(activeSession);
+      setHasPendingWorkout(true);
+      const result = await saveWorkout(pendingWorkout.current);
+        const history = await loadHistory();
+      const savedSession = history.find(session => session.id === result[0]?.sessionId);
+      if (!savedSession) throw new Error("保存結果を取得できませんでした。同じ内容で再試行してください。");
+      setCompletionSummary({
+        calories: savedSession.totalCalories,
+        bodyWeightKg: savedSession.bodyWeightKg,
+        volume: savedSession.entries.reduce((sum, entry) => sum + entry.sets.reduce((total, set) => total + set.weight * set.reps, 0), 0),
+        exerciseCount: savedSession.entries.length,
+      });
+      pendingWorkout.current = null;
+      setHasPendingWorkout(false);
+      setActiveSession(null);
+      setRestRemaining(null);
+    } catch (error) {
+      setWorkoutError(error.message);
+    } finally {
+      savingWorkout.current = false;
+      setIsSavingWorkout(false);
+    }
   }
 
-  if (!loaded) {
+  if (!loaded && !activeSession) {
     return (
       <div style={{ background: COLORS.bg, minHeight: 500, display: "flex", alignItems: "center", justifyContent: "center", color: COLORS.steel, fontFamily: "Inter, sans-serif" }}>
         読み込み中...
@@ -1315,14 +1187,13 @@ export default function Overload() {
 		            0
 		          );
 
-		          const totalCalories = selectedDateSessions.reduce(
-		            (sum, s) => sum + (s.totalCalories ?? 0),
-		            0
-		          );
+		          const calorieSummary = summarizeCalories(selectedDateSessions);
+                  const calorieLabel = calorieSummary.totalCalories == null ? "カロリー未記録"
+                    : `${calorieSummary.totalCalories.toFixed(1)}kcal${calorieSummary.hasUnknownCalories ? "（未記録あり）" : ""}`;
 
 		          return `${fmtDate(
 		            new Date(historyMonth.year, historyMonth.month, selectedDay)
-		          )} · ${totalExercises}種目 · 総量 ${totalVolume.toLocaleString()}kg · 🔥${totalCalories.toFixed(1)}kcal`;
+		          )} · ${totalExercises}種目 · 総量 ${totalVolume.toLocaleString()}kg · 🔥${calorieLabel}`;
 		        })()
 		      : `${historyMonth.year}年${historyMonth.month + 1}月 · 日付を選択してください`
 		    : tab === "workout"
@@ -1363,6 +1234,15 @@ export default function Overload() {
 	    })()}
 	  </div>
 
+      {catalogError && <div role="alert" style={{ padding: 12, color: COLORS.amber }}>
+        種目一覧を読み込めませんでした。{catalogError}
+        <button type="button" onClick={() => setCatalogReload(value => value + 1)}>再読み込み</button>
+      </div>}
+      {historyError && <div role="alert" style={{ padding: 12, color: COLORS.amber }}>
+        履歴を読み込めませんでした。{historyError}
+        <button type="button" onClick={() => setHistoryReload(value => value + 1)}>再読み込み</button>
+      </div>}
+      {profileLoadError && <div role="alert" style={{ padding: 12, color: COLORS.amber }}>プロフィールを読み込めませんでした。{profileLoadError} 実施中の記録は保持しています。</div>}
       {/* Body */}
       <div style={{ flex: 1, overflowY: (pickerOpen || detailExercise || completionSummary) ? "hidden" : "auto", scrollbarGutter: "stable", padding: 16, paddingBottom: 90 }}>
         {tab === "workout" && (
@@ -1374,12 +1254,13 @@ export default function Overload() {
                   <Dumbbell size={40} color={COLORS.steelDim} style={{ marginBottom: 14, filter: `drop-shadow(0 0 10px rgba(240,168,46,0.35))` }} />
                 </div>
                 <div style={{ color: COLORS.steel, fontSize: 14, marginBottom: 20 }}>今日のワークアウトを開始しましょう</div>
-                <button type="button" className="btn-tactile" onClick={startWorkout} style={{ background: COLORS.red, color: "#fff", border: "none", borderRadius: 10, padding: "14px 28px", fontSize: 15, fontWeight: 600, boxShadow: `0 4px 20px rgba(214,64,43,0.4)` }}>
+                <button type="button" className="btn-tactile" onClick={startWorkout} disabled={!catalogReady} style={{ background: COLORS.red, color: "#fff", border: "none", borderRadius: 10, padding: "14px 28px", fontSize: 15, fontWeight: 600, boxShadow: `0 4px 20px rgba(214,64,43,0.4)` }}>
                   {gender === "" ? "プロフィールで性別を選択" : "ワークアウト開始"}
                 </button>
               </div>
             ) : (
               <>
+                <fieldset disabled={editLocked} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
 			    {/* rest timer settings */}
 			    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: COLORS.surface, border: `1px solid ${COLORS.line}`, borderRadius: 10, padding: "10px 14px", marginBottom: 10 }}>
 
@@ -1443,7 +1324,7 @@ export default function Overload() {
                             <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: isPr ? "rgba(240,168,46,0.08)" : COLORS.surfaceAlt, border: isPr ? `1px solid ${COLORS.amber}` : "1px solid transparent", borderRadius: 8, padding: "6px 10px" }}>
                               <span style={{ fontSize: 11, color: COLORS.steelDim, width: 20 }}>#{si + 1}</span>
                               <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, letterSpacing: 0.8, flex: 1, color: COLORS.amber, textShadow: `0 0 8px rgba(240,168,46,0.45)` }}>{s.weight}kg × {s.reps}回</span>
-                              <span style={{ fontSize: 11, color: COLORS.steelDim, marginRight: 8 }}>🔥{estimateSetCalories(s.reps, bodyWeightKg).toFixed(1)}kcal</span>
+                              <span style={{ fontSize: 11, color: COLORS.steelDim, marginRight: 8 }}>🔥{estimateSetCalories(s.reps, activeSession.bodyWeightKg).toFixed(1)}kcal</span>
                               {isPr && (
                                 <span style={{
                                   display: "flex", alignItems: "center", gap: 3, background: COLORS.amber, color: COLORS.bg,
@@ -1525,14 +1406,16 @@ export default function Overload() {
                 })}
 
                 <button type="button"
-                  onClick={() => { setPickerOpen(true); setPickerCategory(null); setPickerEquipment(null); }}
+                  disabled={!catalogReady} onClick={() => { setPickerOpen(true); setPickerCategory(null); setPickerEquipment(null); }}
                   style={{ width: "100%", background: COLORS.surface, border: `1px dashed ${COLORS.line}`, borderRadius: 10, padding: "12px", color: COLORS.steel, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 14 }}
                 >
                   <Plus size={14} /> 種目を追加
                 </button>
 
-                <button type="button" className="btn-tactile" onClick={finishWorkout} style={{ width: "100%", background: COLORS.green, border: "none", borderRadius: 10, padding: "13px", color: "#fff", fontSize: 14, fontWeight: 600 }}>
-                  ワークアウトを終了して保存
+                </fieldset>
+                {workoutSaveError && <div role="alert" style={{ color: COLORS.amber, marginBottom: 12 }}>保存・確認を完了できませんでした。{workoutSaveError}</div>}
+                <button type="button" disabled={isSavingWorkout} className="btn-tactile" onClick={finishWorkout} style={{ width: "100%", background: COLORS.green, border: "none", borderRadius: 10, padding: "13px", color: "#fff", fontSize: 14, fontWeight: 600 }}>
+                  {isSavingWorkout ? "保存中..." : workoutSaveError ? "保存を再試行" : "ワークアウトを終了して保存"}
                 </button>
               </>
             )}
@@ -1554,7 +1437,7 @@ export default function Overload() {
                 return d.getFullYear() === historyMonth.year && d.getMonth() === historyMonth.month;
               });
               const workoutDays = new Set(monthSessions.map((s) => new Date(s.date).toDateString())).size;
-              const monthCalories = monthSessions.reduce((sum, s) => sum + (s.totalCalories ?? 0), 0);
+              const { totalCalories: monthCalories, hasUnknownCalories } = summarizeCalories(monthSessions);
               const goPrev = () => {
                 if (isEarliestMonth) return;
                 setSelectedDay(null);
@@ -1584,7 +1467,8 @@ export default function Overload() {
                     </div>
                     <div style={{ flex: 1, background: COLORS.surface, border: `1px solid ${COLORS.line}`, borderRadius: 12, padding: 14, textAlign: "center" }}>
                       <div style={{ fontSize: 10, color: COLORS.steelDim, marginBottom: 4 }}>合計消費カロリー</div>
-                      <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 22 }}>{monthCalories.toFixed(0)}<span style={{ fontSize: 13, marginLeft: 2 }}>kcal</span></div>
+                      <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 22 }}>{monthCalories == null ? "—" : monthCalories.toFixed(1)}<span style={{ fontSize: 13, marginLeft: 2 }}>kcal</span></div>
+                      {hasUnknownCalories && <div style={{ fontSize: 10 }}>記録済みの分のみ集計（未記録あり）</div>}
                     </div>
                   </div>
 
@@ -1710,7 +1594,7 @@ export default function Overload() {
                               <div key={s.id} style={{ background: COLORS.surface, border: `1px solid ${COLORS.line}`, borderRadius: 12, marginBottom: 10, padding: 14 }}>
                                 <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 15, marginBottom: 2 }}>{fmtDate(s.date)}</div>
                                 <div style={{ fontSize: 11, color: COLORS.steelDim, marginBottom: 12 }}>
-                                  {s.entries.length}種目 · 総量 {totalVolume.toLocaleString()}kg · 🔥{(s.totalCalories ?? 0).toFixed(0)}kcal
+                                  {s.entries.length}種目 · 総量 {totalVolume.toLocaleString()}kg · 🔥{s.totalCalories == null ? "未記録" : `${s.totalCalories.toFixed(1)}kcal`}
                                 </div>
                                 {s.entries.map((entry) => {
                                   const ex = exerciseMap[entry.exerciseId];
@@ -1989,7 +1873,7 @@ export default function Overload() {
             <div style={{ background: COLORS.surfaceAlt, borderRadius: 12, padding: 18, marginBottom: 14 }}>
               <div style={{ fontSize: 11, color: COLORS.steelDim, marginBottom: 4 }}>推定消費カロリー</div>
               <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 32, fontWeight: 700, color: COLORS.red }}>
-                {completionSummary.calories.toFixed(0)}<span style={{ fontSize: 15, marginLeft: 4 }}>kcal</span>
+                {completionSummary.calories == null ? "未記録" : completionSummary.calories.toFixed(1)}<span style={{ fontSize: 15, marginLeft: 4 }}>kcal</span>
               </div>
             </div>
 
@@ -2005,7 +1889,7 @@ export default function Overload() {
             </div>
 
             <div style={{ fontSize: 10, color: COLORS.steelDim, marginBottom: 14 }}>
-              ※体重{bodyWeightKg}kgとMETs法による概算値です(挙上中・休憩中の時間を含む)
+              ※体重{completionSummary.bodyWeightKg}kgとMETs法による概算値です(挙上中・休憩中の時間を含む)
             </div>
 
             <button type="button" onClick={() => setCompletionSummary(null)} style={{ width: "100%", background: COLORS.red, border: "none", borderRadius: 10, padding: 12, color: "#fff", fontSize: 14, fontWeight: 600 }}>

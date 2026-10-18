@@ -18,6 +18,8 @@ class ReviewWorkoutValidationTest {
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
         String format = """
             {"userId":1,"startedAt":"2026-01-01T10:00:00+09:00",
+             "finishedAt":"2026-01-01T11:00:00+09:00","bodyWeightKg":70,
+             "clientRequestId":"12345678-1234-1234-1234-123456789abc",
              "exercises":[{"exerciseId":1,"note":"%s","sets":[
              {"setNumber":1,"weightKg":%s,"reps":1}]}]}
             """;

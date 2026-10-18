@@ -1,5 +1,9 @@
 package overload_api.controller.dto;
 
+import java.math.BigDecimal;
+
+import java.time.OffsetDateTime;
+
 import java.util.List;
 
 /**
@@ -13,9 +17,9 @@ public class WorkoutHistoryResponse {
     private Long sessionId;
 
     /**
-     * ワークアウト開始日時。
+     * ワークアウト開始日時（UTCオフセット付き）。
      */
-    private java.time.OffsetDateTime startedAt;
+    private OffsetDateTime startedAt;
 
     /**
      * 種目のID。
@@ -60,7 +64,7 @@ public class WorkoutHistoryResponse {
      *
      * @return ワークアウト開始日時
      */
-    public java.time.OffsetDateTime getStartedAt() {
+    public OffsetDateTime getStartedAt() {
         return startedAt;
     }
 
@@ -69,7 +73,7 @@ public class WorkoutHistoryResponse {
      *
      * @param startedAt ワークアウト開始日時
      */
-    public void setStartedAt(java.time.OffsetDateTime startedAt) {
+    public void setStartedAt(OffsetDateTime startedAt) {
         this.startedAt = startedAt;
     }
 
@@ -145,4 +149,43 @@ public class WorkoutHistoryResponse {
         this.sets = sets;
     }
 
+
+    /** ワークアウト時の体重。過去データはnull。 */
+    private BigDecimal bodyWeightKg;
+
+    /** @return ワークアウト時の体重。過去データはnull。 */
+    public BigDecimal getBodyWeightKg() {
+        return bodyWeightKg;
+    }
+
+    /** @param bodyWeightKg ワークアウト時の体重。過去データはnull。 */
+    public void setBodyWeightKg(BigDecimal bodyWeightKg) {
+        this.bodyWeightKg = bodyWeightKg;
+    }
+
+    /** 登録時に計算したkcal。過去データはnull。 */
+    private BigDecimal totalCalories;
+
+    /** @return 登録時に計算したkcal。過去データはnull。 */
+    public BigDecimal getTotalCalories() {
+        return totalCalories;
+    }
+
+    /** @param totalCalories 登録時に計算したkcal。過去データはnull。 */
+    public void setTotalCalories(BigDecimal totalCalories) {
+        this.totalCalories = totalCalories;
+    }
+
+    /** 終了日時。未終了はnull。 */
+    private OffsetDateTime finishedAt;
+
+    /** @return 終了日時。未終了はnull。 */
+    public OffsetDateTime getFinishedAt() {
+        return finishedAt;
+    }
+
+    /** @param finishedAt 終了日時。未終了はnull。 */
+    public void setFinishedAt(OffsetDateTime finishedAt) {
+        this.finishedAt = finishedAt;
+    }
 }

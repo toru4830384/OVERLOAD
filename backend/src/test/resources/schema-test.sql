@@ -41,6 +41,11 @@ CREATE TABLE `workout_sessions` (
   `user_id` bigint NOT NULL,
   `started_at` datetime NOT NULL,
   `finished_at` datetime DEFAULT NULL,
+  `body_weight_kg` decimal(5,2) DEFAULT NULL,
+  `total_calories` decimal(12,2) DEFAULT NULL,
+  `client_request_id` varchar(36) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `request_hash` varchar(64) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  UNIQUE KEY `uq_workout_request` (`user_id`, `client_request_id`),
   PRIMARY KEY (`id`),
   KEY `fk_workout_sessions_user` (`user_id`),
   CONSTRAINT `fk_workout_sessions_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)

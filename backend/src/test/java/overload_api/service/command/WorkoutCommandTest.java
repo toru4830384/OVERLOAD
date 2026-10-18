@@ -20,6 +20,8 @@ class WorkoutCommandTest {
         exercise.setExerciseId(1L); exercise.setSets(new ArrayList<>(List.of(set)));
         var input = new WorkoutRequest();
         input.setUserId(1L); input.setStartedAt(OffsetDateTime.now().minusHours(1));
+        input.setFinishedAt(OffsetDateTime.now().minusMinutes(1)); input.setBodyWeightKg(new BigDecimal("70"));
+        input.setClientRequestId("12345678-1234-1234-1234-123456789abc");
         input.setExercises(new ArrayList<>(List.of(exercise)));
         return input;
     }

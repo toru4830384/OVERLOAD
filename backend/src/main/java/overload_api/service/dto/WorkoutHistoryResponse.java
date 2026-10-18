@@ -1,5 +1,7 @@
 package overload_api.service.dto;
 
+import java.math.BigDecimal;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -144,5 +146,44 @@ public class WorkoutHistoryResponse {
      */
     public void setSets(List<WorkoutHistorySetResponse> sets) {
         this.sets = sets;
+    }
+
+    /** ワークアウト時の体重。過去データはnull。 */
+    private BigDecimal bodyWeightKg;
+
+    /** @return ワークアウト時の体重。過去データはnull。 */
+    public BigDecimal getBodyWeightKg() {
+        return bodyWeightKg;
+    }
+
+    /** @param bodyWeightKg ワークアウト時の体重。過去データはnull。 */
+    public void setBodyWeightKg(BigDecimal bodyWeightKg) {
+        this.bodyWeightKg = bodyWeightKg;
+    }
+
+    /** 登録時に計算したkcal。過去データはnull。 */
+    private BigDecimal totalCalories;
+
+    /** @return 登録時に計算したkcal。過去データはnull。 */
+    public BigDecimal getTotalCalories() {
+        return totalCalories;
+    }
+
+    /** @param totalCalories 登録時に計算したkcal。過去データはnull。 */
+    public void setTotalCalories(BigDecimal totalCalories) {
+        this.totalCalories = totalCalories;
+    }
+
+    /** 終了日時。未終了はnull。 */
+    private LocalDateTime finishedAt;
+
+    /** @return 終了日時。未終了はnull。 */
+    public LocalDateTime getFinishedAt() {
+        return finishedAt;
+    }
+
+    /** @param finishedAt 終了日時。未終了はnull。 */
+    public void setFinishedAt(LocalDateTime finishedAt) {
+        this.finishedAt = finishedAt;
     }
 }

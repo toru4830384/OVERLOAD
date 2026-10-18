@@ -36,6 +36,9 @@ public final class WorkoutApiMapper {
 
         serviceRequest.setUserId(request.getUserId());
         serviceRequest.setStartedAt(request.getStartedAt());
+        serviceRequest.setFinishedAt(request.getFinishedAt());
+        serviceRequest.setBodyWeightKg(request.getBodyWeightKg());
+        serviceRequest.setClientRequestId(request.getClientRequestId());
 
         List<overload_api.service.dto.WorkoutExerciseRequest>
                 serviceExercises = new ArrayList<>();
@@ -119,6 +122,9 @@ public final class WorkoutApiMapper {
             WorkoutHistoryResponse response = new WorkoutHistoryResponse();
             response.setSessionId(serviceResponse.getSessionId());
             response.setStartedAt(WorkoutTime.toApiTime(serviceResponse.getStartedAt()));
+            response.setFinishedAt(WorkoutTime.toApiTime(serviceResponse.getFinishedAt()));
+            response.setBodyWeightKg(serviceResponse.getBodyWeightKg());
+            response.setTotalCalories(serviceResponse.getTotalCalories());
             response.setExerciseId(serviceResponse.getExerciseId());
             response.setExerciseName(serviceResponse.getExerciseName());
             response.setNote(serviceResponse.getNote());

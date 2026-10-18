@@ -110,6 +110,9 @@ class WorkoutServiceTest {
         WorkoutRequest request =
                 new WorkoutRequest();
         request.setStartedAt(java.time.OffsetDateTime.parse("2026-01-01T10:00:00+09:00"));
+        request.setFinishedAt(java.time.OffsetDateTime.parse("2026-01-01T11:00:00+09:00"));
+        request.setBodyWeightKg(new BigDecimal("70.00"));
+        request.setClientRequestId(java.util.UUID.randomUUID().toString());
 
         request.setUserId(1L);
         request.setExercises(
@@ -215,6 +218,9 @@ class WorkoutServiceTest {
         WorkoutRequest request =
                 new WorkoutRequest();
         request.setStartedAt(java.time.OffsetDateTime.parse("2026-01-01T10:00:00+09:00"));
+        request.setFinishedAt(java.time.OffsetDateTime.parse("2026-01-01T11:00:00+09:00"));
+        request.setBodyWeightKg(new BigDecimal("70.00"));
+        request.setClientRequestId(java.util.UUID.randomUUID().toString());
 
         request.setUserId(1L);
         request.setExercises(
@@ -283,6 +289,9 @@ class WorkoutServiceTest {
         WorkoutRequest request =
                 new WorkoutRequest();
         request.setStartedAt(java.time.OffsetDateTime.parse("2026-01-01T10:00:00+09:00"));
+        request.setFinishedAt(java.time.OffsetDateTime.parse("2026-01-01T11:00:00+09:00"));
+        request.setBodyWeightKg(new BigDecimal("70.00"));
+        request.setClientRequestId(java.util.UUID.randomUUID().toString());
 
         request.setUserId(1L);
         request.setExercises(
@@ -336,6 +345,9 @@ class WorkoutServiceTest {
         WorkoutRequest request =
                 new WorkoutRequest();
         request.setStartedAt(java.time.OffsetDateTime.parse("2026-01-01T10:00:00+09:00"));
+        request.setFinishedAt(java.time.OffsetDateTime.parse("2026-01-01T11:00:00+09:00"));
+        request.setBodyWeightKg(new BigDecimal("70.00"));
+        request.setClientRequestId(java.util.UUID.randomUUID().toString());
 
         request.setUserId(9999L);
         var set = new WorkoutSetRequest();
@@ -422,6 +434,9 @@ class WorkoutServiceTest {
         WorkoutRequest request =
                 new WorkoutRequest();
         request.setStartedAt(java.time.OffsetDateTime.parse("2026-01-01T10:00:00+09:00"));
+        request.setFinishedAt(java.time.OffsetDateTime.parse("2026-01-01T11:00:00+09:00"));
+        request.setBodyWeightKg(new BigDecimal("70.00"));
+        request.setClientRequestId(java.util.UUID.randomUUID().toString());
 
         request.setUserId(1L);
         request.setExercises(
@@ -532,6 +547,9 @@ class WorkoutServiceTest {
         WorkoutRequest request =
                 new WorkoutRequest();
         request.setStartedAt(java.time.OffsetDateTime.parse("2026-01-01T10:00:00+09:00"));
+        request.setFinishedAt(java.time.OffsetDateTime.parse("2026-01-01T11:00:00+09:00"));
+        request.setBodyWeightKg(new BigDecimal("70.00"));
+        request.setClientRequestId(java.util.UUID.randomUUID().toString());
 
         request.setUserId(1L);
         request.setExercises(
@@ -693,6 +711,9 @@ class WorkoutServiceTest {
         WorkoutRequest request =
                 new WorkoutRequest();
         request.setStartedAt(java.time.OffsetDateTime.parse("2026-01-01T10:00:00+09:00"));
+        request.setFinishedAt(java.time.OffsetDateTime.parse("2026-01-01T11:00:00+09:00"));
+        request.setBodyWeightKg(new BigDecimal("70.00"));
+        request.setClientRequestId(java.util.UUID.randomUUID().toString());
 
         request.setUserId(1L);
         request.setExercises(
@@ -1303,6 +1324,9 @@ class WorkoutServiceTest {
         exercise.setSets(List.of(set));
         var request = new WorkoutRequest();
         request.setStartedAt(java.time.OffsetDateTime.parse("2026-01-01T10:00:00+09:00"));
+        request.setFinishedAt(java.time.OffsetDateTime.parse("2026-01-01T11:00:00+09:00"));
+        request.setBodyWeightKg(new BigDecimal("70.00"));
+        request.setClientRequestId(java.util.UUID.randomUUID().toString());
         request.setUserId(1L);
         request.setExercises(List.of(exercise));
         switch (scenario) {
@@ -1340,16 +1364,18 @@ class WorkoutServiceTest {
     /** 未指定・未来の開始時刻ではDBを書き換えない。 */
     @Test
     void rejectsMissingAndFutureStartTimeBeforeDatabaseAccess() {
-        var userMapper = mock(UserMapper.class);
-        var exerciseMapper = mock(ExerciseMapper.class);
         var workoutSessionMapper = mock(WorkoutSessionMapper.class);
         var workoutSetMapper = mock(WorkoutSetMapper.class);
-        var workoutService = new WorkoutService(
-                workoutSessionMapper, workoutSetMapper, userMapper, exerciseMapper);
+        var userMapper = mock(UserMapper.class);
+        var exerciseMapper = mock(ExerciseMapper.class);
+        var workoutService = new WorkoutService(workoutSessionMapper, workoutSetMapper, userMapper, exerciseMapper);
         var request = new WorkoutRequest();
         request.setUserId(1L);
         assertThrows(IllegalArgumentException.class, () -> workoutService.create(request));
         request.setStartedAt(java.time.OffsetDateTime.now().plusDays(1));
+        request.setFinishedAt(request.getStartedAt().plusHours(1));
+        request.setBodyWeightKg(new BigDecimal("70.00"));
+        request.setClientRequestId(java.util.UUID.randomUUID().toString());
         assertThrows(IllegalArgumentException.class, () -> workoutService.create(request));
         org.mockito.Mockito.verifyNoInteractions(userMapper, exerciseMapper, workoutSessionMapper, workoutSetMapper);
     }

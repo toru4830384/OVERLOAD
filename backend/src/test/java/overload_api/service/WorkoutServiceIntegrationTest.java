@@ -22,7 +22,11 @@ import overload_api.support.MySqlIntegrationTest;
 /**
  * WorkoutServiceのトランザクション処理を確認する結合テストクラス。
  */
+@org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
+
+    @Autowired
+    private org.springframework.test.web.servlet.MockMvc mockMvc;
 
     /**
      * テスト対象のWorkoutService。
@@ -54,6 +58,7 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
     void createCommitsSessionAndBothSets() {
         var request = validRequest();
         request.setStartedAt(java.time.OffsetDateTime.now().minusHours(1).withNano(0));
+        request.setFinishedAt(java.time.OffsetDateTime.now().withNano(0));
         var result = workoutService.create(request);
         var expectedStart = request.getStartedAt().atZoneSameInstant(java.time.ZoneId.of("Asia/Tokyo")).toLocalDateTime();
         assertEquals(expectedStart, jdbcTemplate.queryForObject(
@@ -102,6 +107,9 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
         } finally {
             jdbcTemplate.execute("DROP TRIGGER IF EXISTS fail_second_workout_set");
         }
+        workoutService.create(request);
+        assertEquals(1, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM workout_sessions", Integer.class));
+        assertEquals(2, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM workout_sets", Integer.class));
     }
 
     /** 同じ種目を再実施した場合もDBへの保存と履歴への復元ができる。 */
@@ -133,6 +141,108 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
         assertTrue(history.stream().allMatch(item -> item.getSets().size() == 2));
     }
 
+    /** 再読込・プロフィール変更後も保存済みの概算値を維持する。 */
+    @Test
+    void preservesCaloriesAndWeightSnapshotAcrossProfileChanges() {
+        var request = validRequest();
+        var result = workoutService.create(request);
+        var history = workoutService.findHistoryByUserId(request.getUserId());
+        assertEquals(new BigDecimal("150.31"), history.get(0).getTotalCalories());
+        assertEquals(new BigDecimal("70.00"), history.get(0).getBodyWeightKg());
+        assertEquals(request.getFinishedAt().atZoneSameInstant(java.time.ZoneId.of("Asia/Tokyo")).toLocalDateTime(),
+                history.get(0).getFinishedAt());
+        jdbcTemplate.update("UPDATE users SET body_weight_kg = 90 WHERE id = ?", request.getUserId());
+        assertEquals(new BigDecimal("150.31"), workoutService.findHistoryByUserId(request.getUserId()).get(0).getTotalCalories());
+        assertEquals(result.get(0).getId(), workoutService.create(request).get(0).getId());
+        assertEquals(1, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM workout_sessions", Integer.class));
+        assertEquals(2, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM workout_sets", Integer.class));
+        request.setBodyWeightKg(new BigDecimal("75.00"));
+        assertThrows(overload_api.exception.RequestConflictException.class, () -> workoutService.create(request));
+        assertEquals(2, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM workout_sets", Integer.class));
+    }
+
+    /** 同時再送でもDB上は1セッションだけ登録する。 */
+    @Test
+    void concurrentRetriesOnlyInsertOneSession() throws Exception {
+        var request = validRequest();
+        var ready = new java.util.concurrent.CountDownLatch(2);
+        var start = new java.util.concurrent.CountDownLatch(1);
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            java.util.concurrent.Callable<List<overload_api.model.WorkoutSet>> task = () -> {
+                ready.countDown();
+                start.await();
+                return workoutService.create(request);
+            };
+            var first = pool.submit(task);
+            var second = pool.submit(task);
+            assertTrue(ready.await(5, java.util.concurrent.TimeUnit.SECONDS));
+            start.countDown();
+            assertEquals(first.get(10, java.util.concurrent.TimeUnit.SECONDS).get(0).getId(),
+                    second.get(10, java.util.concurrent.TimeUnit.SECONDS).get(0).getId());
+            assertEquals(1, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM workout_sessions", Integer.class));
+            assertEquals(2, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM workout_sets", Integer.class));
+        } finally {
+            start.countDown();
+            pool.shutdownNow();
+        }
+    }
+
+    /** HTTP登録・再送・履歴取得を通して計算値とセッション数を確認する。 */
+    @Test
+    void httpRegistrationAndHistoryPreserveCanonicalCalories() throws Exception {
+        var request = validRequest();
+        String body = """
+                {"userId":%d,"startedAt":"2026-01-01T10:00:00+09:00",
+                 "finishedAt":"2026-01-01T11:00:00+09:00","bodyWeightKg":70,
+                 "clientRequestId":"%s","exercises":[{"exerciseId":%d,"note":"Integration Test",
+                  "sets":[{"setNumber":1,"weightKg":50,"reps":10},{"setNumber":2,"weightKg":55,"reps":8}]}]}
+                """.formatted(request.getUserId(), request.getClientRequestId(), request.getExercises().get(0).getExerciseId());
+        for (int attempt = 0; attempt < 2; attempt++) {
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/workouts")
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated());
+        }
+        jdbcTemplate.update("UPDATE users SET body_weight_kg = 90 WHERE id = ?", request.getUserId());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/workouts/history")
+                .param("user_id", request.getUserId().toString()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$[0].totalCalories").value(150.31))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$[0].bodyWeightKg").value(70.0))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$[0].finishedAt").value("2026-01-01T11:00:00+09:00"));
+        assertEquals(1, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM workout_sessions", Integer.class));
+    }
+
+    /** レビューの80kg・60分・10回の記録を、プロフィール変更後も170.10kcalで復元する。 */
+    @Test
+    void httpHistoryKeepsRestCaloriesAndStartWeightAfterReload() throws Exception {
+        var request = validRequest();
+        String body = """
+                {"userId":%d,"startedAt":"2026-01-01T10:00:00+09:00",
+                 "finishedAt":"2026-01-01T11:00:00+09:00","bodyWeightKg":80,
+                 "clientRequestId":"%s","exercises":[{"exerciseId":%d,"note":"休憩を含む60分",
+                  "sets":[{"setNumber":1,"weightKg":50,"reps":10}]}]}
+                """.formatted(request.getUserId(), request.getClientRequestId(), request.getExercises().get(0).getExerciseId());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/workouts")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(body))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated());
+        assertEquals(new BigDecimal("170.10"), jdbcTemplate.queryForObject(
+                "SELECT total_calories FROM workout_sessions", BigDecimal.class));
+        assertEquals(new BigDecimal("80.00"), jdbcTemplate.queryForObject(
+                "SELECT body_weight_kg FROM workout_sessions", BigDecimal.class));
+        // 初回取得と、プロフィールを変えた後の再取得で同じ確定値を返す。
+        for (int read = 0; read < 2; read++) {
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/workouts/history")
+                    .param("user_id", request.getUserId().toString()))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$[0].totalCalories").value(170.1))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$[0].bodyWeightKg").value(80.0))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$[0].startedAt").value("2026-01-01T10:00:00+09:00"))
+                    .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$[0].finishedAt").value("2026-01-01T11:00:00+09:00"));
+            jdbcTemplate.update("UPDATE users SET body_weight_kg = 90 WHERE id = ?", request.getUserId());
+        }
+    }
+
     /** 登録済みのユーザー・種目を使った正常な入力を生成する。 */
     private WorkoutRequest validRequest() {
         Long userId = insert(jdbcTemplate,
@@ -155,6 +265,9 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
         exercise.setSets(List.of(firstSet, secondSet));
         WorkoutRequest request = new WorkoutRequest();
         request.setStartedAt(java.time.OffsetDateTime.parse("2026-01-01T10:00:00+09:00"));
+        request.setFinishedAt(java.time.OffsetDateTime.parse("2026-01-01T11:00:00+09:00"));
+        request.setBodyWeightKg(new BigDecimal("70.00"));
+        request.setClientRequestId(java.util.UUID.randomUUID().toString());
         request.setUserId(userId);
         request.setExercises(List.of(exercise));
         return request;

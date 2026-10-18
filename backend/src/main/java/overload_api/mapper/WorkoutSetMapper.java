@@ -73,7 +73,8 @@ public interface WorkoutSetMapper {
     @Select("""
         SELECT
             ws.session_id AS sessionId,
-            wss.started_at AS startedAt,
+            wss.started_at AS startedAt, wss.finished_at AS finishedAt,
+            wss.body_weight_kg AS bodyWeightKg, wss.total_calories AS totalCalories,
             ws.exercise_id AS exerciseId,
             e.name AS exerciseName,
             ws.exercise_order AS exerciseOrder,
@@ -94,4 +95,17 @@ public interface WorkoutSetMapper {
             ws.set_number
         """)
     List<WorkoutHistoryRow> findHistoryByUserId(Long userId);
+    /** 保存済みセッションのセットを取得する。
+     * @param sessionId セッションID
+     * @return セット一覧
+     */
+    @Select("""
+        SELECT id, session_id AS sessionId, exercise_id AS exerciseId,
+               exercise_order AS exerciseOrder, set_number AS setNumber,
+               weight_kg AS weightKg, reps, note
+        FROM workout_sets WHERE session_id = #{sessionId}
+        ORDER BY exercise_order, set_number, id
+        FOR UPDATE
+        """)
+    List<WorkoutSet> findBySessionId(Long sessionId);
 }
