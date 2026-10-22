@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: overload-api
+
+  jackson:
+    deserialization:
+      # Integer/Longへの変換で回数・IDなどの小数を切り捨てない。
+      accept-float-as-int: false
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/overload_db
+    username: root
+    password:
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml

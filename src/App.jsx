@@ -1,4 +1,12 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { workoutWeightError, workoutRepetitionsError, parseWorkoutRepetitions, WORKOUT_REPETITIONS_MIN, WORKOUT_REPETITIONS_MAX } from "./features/workouts/validation.js";
+import { ApiError, getExercises, getProfile, getWorkoutHistory, saveProfile, saveWorkout } from "./api/client.js";
+import { summarizeCalories } from "./features/workouts/history.js";
+import { createHistoryLoader } from "./features/workouts/historyLoader.js";
+import { useWorkoutDraft } from "./features/workouts/useWorkoutDraft.js";
+import WorkoutDraftNotice from "./components/WorkoutDraftNotice.jsx";
+import { profileNameError } from "./features/profile/nameValidation.js";
+import { profileWeightError } from "./features/profile/weightValidation.js";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Plus, Play, Pause, Check, X, ChevronDown, ChevronUp, ChevronLeft, Dumbbell, History, ListChecks, Timer, Trash2, User } from "lucide-react";
 
 const COLORS = {
@@ -240,7 +248,6 @@ const EQUIPMENT_LABELS = {
 // ウェイトトレーニング(挙上中、一般的な強度)は MET 5.0、セット間の休憩中は MET 2.0(立って休む程度)を採用。
 // 1レップあたりの挙上時間は目安として3秒と仮定して算出(あくまで概算値)。
 const WEIGHT_TRAINING_MET = 5.0;
-const REST_MET = 2.0;
 const SECONDS_PER_REP = 3;
 function caloriesForMinutes(met, bodyWeightKg, minutes) {
   if (!bodyWeightKg || minutes <= 0) return 0;
@@ -759,7 +766,7 @@ const ExerciseRow = React.memo(function ExerciseRow({ ex, onDetail, showEquipmen
         contentVisibility: "auto", containIntrinsicSize: "0 46px",
       }}
     >
-      <button type="button" onClick={() => onDetail(ex)} style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", textAlign: "left", padding: 0 }}>
+      <button type="button" onClick={() => onDetail(ex)} style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", textAlign: "left", padding: 0, color: COLORS.chalk}}>
         <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 6, padding: 3, display: "flex", flexShrink: 0 }}>
           <MovementIcon pattern={ex.pattern} size={20} />
         </div>
@@ -780,7 +787,22 @@ export default function Overload() {
   const [loaded, setLoaded] = useState(false);
   const [exercises, setExercises] = useState(DEFAULT_EXERCISES);
   const [sessions, setSessions] = useState([]);
-  const [activeSession, setActiveSession] = useState(null);
+  const draft = useWorkoutDraft(1);
+  const activeSession = draft.session;
+  const setActiveSession = draft.setSession;
+  const [isSavingWorkout, setIsSavingWorkout] = useState(false);
+  const savingWorkout = useRef(false);
+  const [workoutError, setWorkoutError] = useState("");
+  const [saveConflict, setSaveConflict] = useState(false);
+  const [catalogReady, setCatalogReady] = useState(false);
+  const [catalogError, setCatalogError] = useState("");
+  const [catalogReload, setCatalogReload] = useState(0);
+  const [historyError, setHistoryError] = useState("");
+  const [historyReload, setHistoryReload] = useState(0);
+  const [profileLoadError, setProfileLoadError] = useState("");
+  const loadHistory = useMemo(() => createHistoryLoader(signal => getWorkoutHistory(1, signal), setSessions), []);
+  const editLocked = isSavingWorkout || Boolean(draft.pendingPayload) || draft.errorKind === "conflict";
+  const workoutSaveError = workoutError || (draft.pendingPayload ? "保存結果の確認が必要です。同じ内容で完了を再試行してください。" : "");
   const [tab, setTab] = useState("workout");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerCategory, setPickerCategory] = useState(null);
@@ -794,11 +816,13 @@ export default function Overload() {
   const [restJustFinished, setRestJustFinished] = useState(false);
   const [restNextSet, setRestNextSet] = useState(null);
   const [bodyWeightKg, setBodyWeightKg] = useState(65);
-  const [gender, setGender] = useState("none");
+  const [gender, setGender] = useState("");
   const [userName, setUserName] = useState("");
   const [age, setAge] = useState("");
   const [completionSummary, setCompletionSummary] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
+  const [weightError, setWeightError] = useState("");
+  const [repsError, setRepsError] = useState("");
   const [exerciseSearch, setExerciseSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterEquipment, setFilterEquipment] = useState("all");
@@ -808,41 +832,74 @@ export default function Overload() {
   });
   const [selectedDay, setSelectedDay] = useState(null);
 
+  // 種目を取得できなくても、復元した下書きは表示・編集する。
+  useEffect(() => {
+    const controller = new AbortController();
+    getExercises(controller.signal).then(data => {
+      if (controller.signal.aborted) return;
+      setExercises(data);
+      setCatalogReady(true);
+      setCatalogError("");
+    }).catch(error => {
+      if (controller.signal.aborted) return;
+      setCatalogReady(false);
+      setCatalogError(error.message);
+    });
+    return () => controller.abort();
+  }, [catalogReload]);
+
   // load
   useEffect(() => {
     (async () => {
       try {
-        const res = await window.storage.get(STORAGE_KEY, false);
-        if (res && res.value) {
-          const data = JSON.parse(res.value);
-          setExercises(DEFAULT_EXERCISES);
-          setSessions(data.sessions || []);
-          setActiveSession(data.activeSession || null);
-          if (data.bodyWeightKg) setBodyWeightKg(data.bodyWeightKg);
-          if (data.gender) setGender(data.gender);
-          if (data.userName) setUserName(data.userName);
-          if (data.age) setAge(data.age);
-        }
+        // プロフィールはJava APIから取得
+        const user = await getProfile(1);
+
+        setUserName(user.name || "");
+        setGender(["male", "female"].includes(user.gender) ? user.gender : "");
+        setAge(user.age ?? "");
+        setBodyWeightKg(user.bodyWeightKg ?? "");
+
+        console.log("APIから取得したプロフィール:", user);
+
       } catch (e) {
-        // first run, no data
+        setProfileLoadError(e.message);
       } finally {
         setLoaded(true);
       }
     })();
   }, []);
 
-  // save
+  // 保存済みの計算結果を復元し、古い取得応答で完了後の一覧を戻さない。
   useEffect(() => {
-    if (!loaded) return;
-    (async () => {
-      try {
-        await window.storage.set(STORAGE_KEY, JSON.stringify({ sessions, activeSession, bodyWeightKg, gender, age, userName }), false);
-      } catch (e) {
-        console.error("save failed", e);
-      }
-    })();
-  }, [sessions, activeSession, bodyWeightKg, gender, age, userName, loaded]);
+    const controller = new AbortController();
+    loadHistory(controller.signal).then(() => {
+      if (!controller.signal.aborted) setHistoryError("");
+    }).catch(error => {
+      if (!controller.signal.aborted) setHistoryError(error.message);
+    });
+    return () => controller.abort();
+  }, [loadHistory, historyReload]);
 
+  // プロフィールをJava APIへ自動保存
+  useEffect(() => {
+    if (!loaded || profileNameError(userName) || profileWeightError(bodyWeightKg) || !["male", "female"].includes(gender) || age === "" || !Number.isInteger(Number(age)) || Number(age) < 0) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        await saveProfile(1, {
+          name: userName, gender, age: Number(age), bodyWeightKg: Number(bodyWeightKg),
+        });
+
+        console.log("プロフィール保存成功");
+      } catch (error) {
+        console.error("プロフィール保存エラー:", error);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [userName, gender, age, bodyWeightKg, loaded]);
+  
   // rest timer tick
   useEffect(() => {
     if (!restRunning) return;
@@ -888,7 +945,7 @@ export default function Overload() {
         if (list.length === 0) return null;
         return (
           <div key={cat} style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, color: COLORS.steelDim, marginBottom: 6, letterSpacing: 1 }}>{cat.toUpperCase()}</div>
+            <div style={{ fontSize: 11, color: COLORS.chalk, marginBottom: 6, letterSpacing: 1 }}>{cat.toUpperCase()}</div>
             {list.map((ex) => (
               <ExerciseRow key={ex.id} ex={ex} onDetail={setDetailExercise} showEquipment={false} />
             ))}
@@ -906,7 +963,7 @@ export default function Overload() {
     }
     return (
       <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 11, color: COLORS.steelDim, marginBottom: 6, letterSpacing: 1 }}>{results.length}件ヒット</div>
+        <div style={{ fontSize: 11, color: COLORS.chalk, marginBottom: 6, letterSpacing: 1 }}>{results.length}件ヒット</div>
         {results.map((ex) => (
           <ExerciseRow key={ex.id} ex={ex} onDetail={setDetailExercise} showEquipment={true} />
         ))}
@@ -919,14 +976,21 @@ export default function Overload() {
   }, [detailExercise]);
 
   function startWorkout() {
-    setActiveSession({ id: "s-" + Date.now(), date: new Date().toISOString(), entries: [] });
+    if (!catalogReady || draft.isPersisting || ["load", "clear", "conflict"].includes(draft.errorKind)) return;
+    if (profileLoadError || profileWeightError(bodyWeightKg) || !["male", "female"].includes(gender)) {
+      setTab("profile");
+      return;
+    }
+    setWorkoutError("");
+    setSaveConflict(false);
+    setActiveSession({ id: crypto.randomUUID(), date: new Date().toISOString(), bodyWeightKg: Number(bodyWeightKg), entries: [] });
   }
 
   function addExerciseToSession(exId) {
     setActiveSession((prev) => {
       if (!prev) return prev;
       if (prev.entries.some((e) => e.exerciseId === exId)) return prev;
-      return { ...prev, entries: [...prev.entries, { exerciseId: exId, sets: [], draftWeight: "", draftReps: "" }] };
+      return { ...prev, entries: [...prev.entries, { exerciseId: exId, exerciseName: exerciseMap[exId]?.name || "", sets: [], draftWeight: "", draftReps: "" }] };
     });
     setPickerOpen(false);
     setPickerCategory(null);
@@ -943,9 +1007,22 @@ export default function Overload() {
 
   function addSet(entryIdx) {
     const entry = activeSession.entries[entryIdx];
-    const w = parseFloat(entry.draftWeight);
-    const r = parseInt(entry.draftReps, 10);
-    if (isNaN(w) || isNaN(r) || w <= 0 || r <= 0) return;
+	const w = Number(entry.draftWeight);
+	const r = parseWorkoutRepetitions(entry.draftReps);
+	const weightMessage = workoutWeightError(entry.draftWeight);
+	const weightInvalid = Boolean(weightMessage);
+	const repsMessage = workoutRepetitionsError(entry.draftReps);
+	const repsInvalid = Boolean(repsMessage);
+
+	setWeightError(
+	  weightMessage
+	);
+
+	setRepsError(
+	  repsMessage
+	);
+
+	if (weightInvalid || repsInvalid) return;
     const ex = exerciseMap[entry.exerciseId];
     const nextSetNumber = entry.sets.length + 2; // the set just logged is (length+1); the upcoming one is +2
     setActiveSession((prev) => {
@@ -977,43 +1054,58 @@ export default function Overload() {
     });
   }
 
-  function finishWorkout() {
-    if (!activeSession) return;
-    const hasSets = activeSession.entries.some((e) => e.sets.length > 0);
-    if (hasSets) {
-      const activeMinutes = activeSession.entries.reduce(
-        (sum, e) => sum + e.sets.reduce((s2, set) => s2 + (set.reps * SECONDS_PER_REP) / 60, 0),
-        0
-      );
-      const elapsedMinutes = Math.max(0, (Date.now() - new Date(activeSession.date).getTime()) / 60000);
-      const restMinutes = Math.max(0, elapsedMinutes - activeMinutes);
-      const activeCalories = caloriesForMinutes(WEIGHT_TRAINING_MET, bodyWeightKg, activeMinutes);
-      const restCalories = caloriesForMinutes(REST_MET, bodyWeightKg, restMinutes);
-      const totalCalories = activeCalories + restCalories;
-      const totalVolume = activeSession.entries.reduce(
-        (sum, e) => sum + e.sets.reduce((s2, set) => s2 + set.weight * set.reps, 0),
-        0
-      );
-      const clean = { ...activeSession, totalCalories, entries: activeSession.entries.filter((e) => e.sets.length > 0).map(({ draftWeight, draftReps, ...rest }) => rest) };
-      setSessions((prev) => [clean, ...prev]);
-      setCompletionSummary({ calories: totalCalories, volume: totalVolume, exerciseCount: clean.entries.length });
-    }
-    setActiveSession(null);
+  async function finishWorkout() {
+    if (!activeSession || savingWorkout.current) return;
+    savingWorkout.current = true;
+    setIsSavingWorkout(true);
+    setWorkoutError("");
     setRestRunning(false);
-    setRestRemaining(null);
+    let accepted = false;
+    try {
+      const payload = await draft.freezeForSave();
+      if (payload.exercises.length === 0) {
+        await draft.complete();
+        setRestRemaining(null);
+        return;
+      }
+      const result = await saveWorkout(payload);
+      accepted = true;
+      setSaveConflict(false);
+      const history = await loadHistory();
+      const savedSession = history.find(session => session.id === result[0]?.sessionId);
+      if (!savedSession) throw new Error("保存結果を取得できませんでした。同じ内容で再試行してください。");
+      setCompletionSummary({
+        calories: savedSession.totalCalories,
+        bodyWeightKg: savedSession.bodyWeightKg,
+        volume: savedSession.entries.reduce((sum, entry) => sum + entry.sets.reduce((total, set) => total + set.weight * set.reps, 0), 0),
+        exerciseCount: savedSession.entries.length,
+      });
+      await draft.complete();
+      setRestRemaining(null);
+    } catch (error) {
+      // POST前の確定拒否だけ編集へ戻す。応答不明・保存後の確認失敗では同じ内容を再送する。
+      if (!accepted && error instanceof ApiError) {
+        if ([400, 404, 422].includes(error.status)) await draft.resumeAfterRejection(error.status);
+        setSaveConflict(error.status === 409);
+      }
+      setWorkoutError(error.message);
+    } finally {
+      savingWorkout.current = false;
+      setIsSavingWorkout(false);
+    }
   }
 
-  if (!loaded) {
+  if (!loaded && !activeSession) {
     return (
-      <div style={{ background: COLORS.bg, minHeight: 500, display: "flex", alignItems: "center", justifyContent: "center", color: COLORS.steel, fontFamily: "Inter, sans-serif" }}>
+      <><WorkoutDraftNotice draft={draft} /><div style={{ background: COLORS.bg, minHeight: 500, display: "flex", alignItems: "center", justifyContent: "center", color: COLORS.steel, fontFamily: "Inter, sans-serif" }}>
         読み込み中...
-      </div>
+      </div></>
     );
   }
 
 
   return (
-    <div className="overload-root" style={{ background: COLORS.bg, fontFamily: "Inter, sans-serif", color: COLORS.chalk, display: "flex", flexDirection: "column", maxWidth: 480, margin: "0 auto", position: "relative" }}>
+    <div className="overload-root" style={{ background: COLORS.bg, fontFamily: "Inter, sans-serif", color: COLORS.chalk, display: "flex", flexDirection: "column", width: "100%", maxWidth: 480, margin: "0 auto", position: "relative" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap');
         * { box-sizing: border-box; }
@@ -1057,41 +1149,117 @@ export default function Overload() {
         </>
       )}
 
-      {/* Header */}
-      <div style={{ padding: "16px 18px 12px", borderBottom: `1px solid ${COLORS.line}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 22, letterSpacing: 1.5, fontWeight: 700, color: COLORS.chalk, textShadow: `0 0 18px rgba(214,64,43,0.45)` }}>OVERLOAD</div>
-          <div style={{ fontSize: 11, color: COLORS.steelDim, marginTop: 2 }}>{fmtDate(new Date().toISOString())} · 記録セッション {sessions.length}回</div>
-        </div>
-        {restRemaining !== null && (() => {
-          const gaugeColor = !restRunning ? COLORS.steelDim : restRemaining <= 5 ? COLORS.red : COLORS.amber;
-          const r = 21, circumference = 2 * Math.PI * r;
-          const progress = restSeconds > 0 ? Math.max(0, Math.min(1, restRemaining / restSeconds)) : 0;
-          const dashoffset = circumference * (1 - progress);
-          return (
-            <div
-              onClick={() => setRestRunning((r2) => !r2)}
-              style={{ position: "relative", width: 52, height: 52, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", animation: restRunning && restRemaining <= 5 ? "pulseGlow 1s infinite" : "none", borderRadius: "50%" }}
-            >
-              <svg width="52" height="52" viewBox="0 0 52 52" style={{ position: "absolute", top: 0, left: 0, transform: "rotate(-90deg)" }}>
-                <circle cx="26" cy="26" r={r} fill="none" stroke={COLORS.line} strokeWidth="4" />
-                <circle
-                  cx="26" cy="26" r={r} fill="none" stroke={gaugeColor} strokeWidth="4" strokeLinecap="round"
-                  strokeDasharray={circumference} strokeDashoffset={dashoffset}
-                  style={{ transition: "stroke-dashoffset 1s linear, stroke 0.3s" }}
-                />
-              </svg>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-                {restRunning ? <Pause size={9} color={COLORS.steelDim} /> : <Play size={9} color={COLORS.steelDim} />}
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 500, letterSpacing: 0.5, color: gaugeColor, textShadow: `0 0 6px ${gaugeColor}88` }}>
-                  {Math.floor(restRemaining / 60)}:{String(restRemaining % 60).padStart(2, "0")}
-                </span>
-              </div>
-            </div>
-          );
-        })()}
-      </div>
+	  {/* Header */}
+	  <div style={{ padding: "16px 18px 12px", borderBottom: `1px solid ${COLORS.line}`, display: "flex", alignItems: "flex-start" }}>
+	    <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+	      <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 22, letterSpacing: 1.5, fontWeight: 700, color: COLORS.chalk, textShadow: `0 0 18px rgba(214,64,43,0.45)` }}>OVERLOAD</div>
+		  <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: COLORS.steelDim, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+		  {tab === "workout" && <Dumbbell size={11} strokeWidth={1.8} style={{ flexShrink: 0 }} />}
+		  {tab === "history" && <History size={11} strokeWidth={1.8} style={{ flexShrink: 0 }} />}
+		  {tab === "exercises" && <ListChecks size={11} strokeWidth={1.8} style={{ flexShrink: 0 }} />}
+		  {tab === "profile" && <User size={11} strokeWidth={1.8} style={{ flexShrink: 0 }} />}
+		  {tab === "history"
+		    ? selectedDay !== null
+		      ? (() => {
+		          const selectedDateSessions = sessions.filter((s) => {
+		            const d = new Date(s.date);
+		            return (
+		              d.getFullYear() === historyMonth.year &&
+		              d.getMonth() === historyMonth.month &&
+		              d.getDate() === selectedDay
+		            );
+		          });
 
+		          const exerciseIds = new Set(
+		            selectedDateSessions.flatMap((s) =>
+		              s.entries.map((e) => e.exerciseId)
+		            )
+		          );
+
+		          const totalExercises = exerciseIds.size;
+
+		          const totalVolume = selectedDateSessions.reduce(
+		            (sum, s) =>
+		              sum +
+		              s.entries.reduce(
+		                (entrySum, e) =>
+		                  entrySum +
+		                  e.sets.reduce(
+		                    (setSum, st) => setSum + st.weight * st.reps,
+		                    0
+		                  ),
+		                0
+		              ),
+		            0
+		          );
+
+		          const calorieSummary = summarizeCalories(selectedDateSessions);
+                  const calorieLabel = calorieSummary.totalCalories == null ? "カロリー未記録"
+                    : `${calorieSummary.totalCalories.toFixed(1)}kcal${calorieSummary.hasUnknownCalories ? "（未記録あり）" : ""}`;
+
+		          return `${fmtDate(
+		            new Date(historyMonth.year, historyMonth.month, selectedDay)
+		          )} · ${totalExercises}種目 · 総量 ${totalVolume.toLocaleString()}kg · 🔥${calorieLabel}`;
+		        })()
+		      : `${historyMonth.year}年${historyMonth.month + 1}月 · 日付を選択してください`
+		    : tab === "workout"
+		    ? "今日のトレーニングを始めよう"
+		    : tab === "exercises"
+		    ? "種目を選択すると詳細を確認できます"
+		    : tab === "profile"
+		    ? "あなたの情報を管理"
+		    : ""}
+	      </div>
+	    </div>
+	    {restRemaining !== null && (() => {
+	      const gaugeColor = !restRunning ? COLORS.steelDim : restRemaining <= 5 ? COLORS.red : COLORS.amber;
+	      const r = 21, circumference = 2 * Math.PI * r;
+	      const progress = restSeconds > 0 ? Math.max(0, Math.min(1, restRemaining / restSeconds)) : 0;
+	      const dashoffset = circumference * (1 - progress);
+	      return (
+			<div
+			  onClick={() => setRestRunning((r2) => !r2)}
+			  style={{ position: "relative", width: 52, height: 52, flexShrink: 0, marginLeft: "auto", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", animation: restRunning && restRemaining <= 5 ? "pulseGlow 1s infinite" : "none", borderRadius: "50%" }}
+			>
+	          <svg width="52" height="52" viewBox="0 0 52 52" style={{ position: "absolute", top: 0, left: 0, transform: "rotate(-90deg)" }}>
+	            <circle cx="26" cy="26" r={r} fill="none" stroke={COLORS.line} strokeWidth="4" />
+	            <circle
+	              cx="26" cy="26" r={r} fill="none" stroke={gaugeColor} strokeWidth="4" strokeLinecap="round"
+	              strokeDasharray={circumference} strokeDashoffset={dashoffset}
+	              style={{ transition: "stroke-dashoffset 1s linear, stroke 0.3s" }}
+	            />
+	          </svg>
+	          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+	            {restRunning ? <Pause size={9} color={COLORS.steelDim} /> : <Play size={9} color={COLORS.steelDim} />}
+	            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 500, letterSpacing: 0.5, color: gaugeColor, textShadow: `0 0 6px ${gaugeColor}88` }}>
+	              {Math.floor(restRemaining / 60)}:{String(restRemaining % 60).padStart(2, "0")}
+	            </span>
+	          </div>
+	        </div>
+	      );
+	    })()}
+	  </div>
+
+      {catalogError && <div role="alert" style={{ padding: 12, color: COLORS.amber }}>
+        種目一覧を読み込めませんでした。{catalogError}
+        <button type="button" onClick={() => setCatalogReload(value => value + 1)}>再読み込み</button>
+      </div>}
+      {historyError && <div role="alert" style={{ padding: 12, color: COLORS.amber }}>
+        履歴を読み込めませんでした。{historyError}
+        <button type="button" onClick={() => setHistoryReload(value => value + 1)}>再読み込み</button>
+      </div>}
+      {profileLoadError && <div role="alert" style={{ padding: 12, color: COLORS.amber }}>プロフィールを読み込めませんでした。{profileLoadError} 実施中の記録は保持しています。</div>}
+      <WorkoutDraftNotice draft={draft} />
+      {saveConflict && <div role="alert" style={{ padding: 12, color: COLORS.amber }}>
+        同じ識別子で別の内容が保存されています。現在の下書きは保持しています。再試行するか、履歴を確認してください。
+        <button type="button" onClick={async () => {
+          try { await loadHistory(); setTab("history"); } catch (error) { setWorkoutError(error.message); }
+        }}>履歴を確認</button>
+        <button type="button" onClick={async () => {
+          if (!window.confirm("現在の下書きを削除します。サーバーの保存済み記録は残ります。元に戻せません。")) return;
+          if (await draft.complete()) { setSaveConflict(false); setWorkoutError(""); }
+        }}>現在の下書きを破棄</button>
+      </div>}
       {/* Body */}
       <div style={{ flex: 1, overflowY: (pickerOpen || detailExercise || completionSummary) ? "hidden" : "auto", scrollbarGutter: "stable", padding: 16, paddingBottom: 90 }}>
         {tab === "workout" && (
@@ -1103,27 +1271,41 @@ export default function Overload() {
                   <Dumbbell size={40} color={COLORS.steelDim} style={{ marginBottom: 14, filter: `drop-shadow(0 0 10px rgba(240,168,46,0.35))` }} />
                 </div>
                 <div style={{ color: COLORS.steel, fontSize: 14, marginBottom: 20 }}>今日のワークアウトを開始しましょう</div>
-                <button type="button" className="btn-tactile" onClick={startWorkout} style={{ background: COLORS.red, color: "#fff", border: "none", borderRadius: 10, padding: "14px 28px", fontSize: 15, fontWeight: 600, boxShadow: `0 4px 20px rgba(214,64,43,0.4)` }}>
-                  ワークアウト開始
+                <button type="button" className="btn-tactile" onClick={startWorkout} disabled={!catalogReady || draft.isPersisting || ["load", "clear", "conflict"].includes(draft.errorKind)} style={{ background: COLORS.red, color: "#fff", border: "none", borderRadius: 10, padding: "14px 28px", fontSize: 15, fontWeight: 600, boxShadow: `0 4px 20px rgba(214,64,43,0.4)` }}>
+                  {gender === "" ? "プロフィールで性別を選択" : "ワークアウト開始"}
                 </button>
               </div>
             ) : (
               <>
-                {/* rest timer settings */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: COLORS.surface, border: `1px solid ${COLORS.line}`, borderRadius: 10, padding: "10px 14px", marginBottom: 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: COLORS.steel }}>
-                    <Timer size={14} /> 休憩設定
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <button type="button" onClick={() => setRestSeconds((s) => Math.max(15, s - 15))} style={{ background: COLORS.surfaceAlt, border: `1px solid ${COLORS.line}`, borderRadius: 6, color: COLORS.chalk, width: 26, height: 26 }}>-</button>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, minWidth: 36, textAlign: "center" }}>{restSeconds}秒</span>
-                    <button type="button" onClick={() => setRestSeconds((s) => s + 15)} style={{ background: COLORS.surfaceAlt, border: `1px solid ${COLORS.line}`, borderRadius: 6, color: COLORS.chalk, width: 26, height: 26 }}>+</button>
-                  </div>
-                </div>
+                <fieldset disabled={editLocked} style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
+			    {/* rest timer settings */}
+			    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: COLORS.surface, border: `1px solid ${COLORS.line}`, borderRadius: 10, padding: "10px 14px", marginBottom: 10 }}>
+
+			      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: COLORS.steel }}>
+
+			        <Timer size={14} /> 休憩設定
+
+			      </div>
+
+			      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+
+				    <input
+				      type="number"
+				      min="1"
+				      value={restSeconds === 0 ? "" : restSeconds}
+				      placeholder="休憩時間を入力"
+				      onChange={(e) => setRestSeconds(Number(e.target.value))}
+				      style={{ width: 100, height: 30, background: COLORS.surfaceAlt, border: `1px solid ${COLORS.line}`, borderRadius: 6, color: COLORS.chalk, textAlign: "center", fontFamily: "'JetBrains Mono', monospace", fontSize: 13 }}
+				    />
+
+			        <span style={{ fontSize: 12, color: COLORS.steel }}>秒</span>
+
+			      </div>
+
+			    </div>
 
                 {activeSession.entries.map((entry, idx) => {
-                  const ex = exerciseMap[entry.exerciseId];
-                  if (!ex) return null;
+                  const ex = exerciseMap[entry.exerciseId] || { id: entry.exerciseId, name: entry.exerciseName || `種目 #${entry.exerciseId}（情報未取得）` };
                   const pr = prMap[ex.id];
                   return (
                     <div key={entry.exerciseId} style={{ background: COLORS.surface, border: `1px solid ${COLORS.line}`, borderRadius: 12, padding: 14, marginBottom: 12 }}>
@@ -1158,7 +1340,7 @@ export default function Overload() {
                             <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: isPr ? "rgba(240,168,46,0.08)" : COLORS.surfaceAlt, border: isPr ? `1px solid ${COLORS.amber}` : "1px solid transparent", borderRadius: 8, padding: "6px 10px" }}>
                               <span style={{ fontSize: 11, color: COLORS.steelDim, width: 20 }}>#{si + 1}</span>
                               <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, letterSpacing: 0.8, flex: 1, color: COLORS.amber, textShadow: `0 0 8px rgba(240,168,46,0.45)` }}>{s.weight}kg × {s.reps}回</span>
-                              <span style={{ fontSize: 11, color: COLORS.steelDim, marginRight: 8 }}>🔥{estimateSetCalories(s.reps, bodyWeightKg).toFixed(1)}kcal</span>
+                              <span style={{ fontSize: 11, color: COLORS.steelDim, marginRight: 8 }}>🔥{estimateSetCalories(s.reps, activeSession.bodyWeightKg).toFixed(1)}kcal</span>
                               {isPr && (
                                 <span style={{
                                   display: "flex", alignItems: "center", gap: 3, background: COLORS.amber, color: COLORS.bg,
@@ -1174,18 +1356,61 @@ export default function Overload() {
                         </div>
                       )}
 
-                      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                        <input
-                          type="number" inputMode="decimal" placeholder="重量kg" value={entry.draftWeight}
-                          onChange={(e) => updateDraft(idx, "draftWeight", e.target.value)}
-                          style={{ flex: 1, background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: "10px", color: COLORS.chalk, fontSize: 14 }}
-                        />
-                        <input
-                          type="number" inputMode="numeric" placeholder="回数" value={entry.draftReps}
-                          onChange={(e) => updateDraft(idx, "draftReps", e.target.value)}
-                          style={{ flex: 1, background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: "10px", color: COLORS.chalk, fontSize: 14 }}
-                        />
-                        <button type="button" className="btn-tactile" onClick={() => addSet(idx)} style={{ background: COLORS.blue, border: "none", borderRadius: 8, padding: "0 16px", color: "#fff" }}>
+					  <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "flex-start" }}>
+					  <div style={{ flex: 1 }}>
+					    <input
+					      type="number"
+					      inputMode="decimal"
+					      placeholder="重量(kg)"
+					      value={entry.draftWeight}
+					      onChange={(e) => updateDraft(idx, "draftWeight", e.target.value)}
+					      style={{
+					        width: "100%",
+					        boxSizing: "border-box",
+					        background: COLORS.bg,
+					        border: `1px solid ${COLORS.line}`,
+					        borderRadius: 8,
+					        padding: "10px",
+					        color: COLORS.chalk,
+					        fontSize: 14
+					      }}
+					    />
+
+					    {weightError && (
+					      <div style={{ marginTop: 4, fontSize: 11, color: COLORS.red }}>
+					        {weightError}
+					      </div>
+					    )}
+					  </div>
+					  <div style={{ flex: 1 }}>
+					    <input
+					      type="number"
+					      inputMode="numeric"
+					      min={WORKOUT_REPETITIONS_MIN}
+					      max={WORKOUT_REPETITIONS_MAX}
+					      step={1}
+					      placeholder="回数"
+					      value={entry.draftReps}
+					      onChange={(e) => updateDraft(idx, "draftReps", e.target.value)}
+					      style={{
+					        width: "100%",
+					        boxSizing: "border-box",
+					        background: COLORS.bg,
+					        border: `1px solid ${COLORS.line}`,
+					        borderRadius: 8,
+					        padding: "10px",
+					        color: COLORS.chalk,
+					        fontSize: 14
+					      }}
+					    />
+
+					    {repsError && (
+					      <div style={{ marginTop: 4, fontSize: 11, color: COLORS.red }}>
+					        {repsError}
+					      </div>
+					    )}
+					  </div>
+                        <button type="button" className="btn-tactile" onClick={() => addSet(idx)} style={{ background: COLORS.blue, border: "none", borderRadius: 8, padding: "0 16px", color: "#fff", height: 40 }}>
                           <Plus size={16} />
                         </button>
                       </div>
@@ -1200,14 +1425,16 @@ export default function Overload() {
                 })}
 
                 <button type="button"
-                  onClick={() => { setPickerOpen(true); setPickerCategory(null); setPickerEquipment(null); }}
+                  disabled={!catalogReady} onClick={() => { setPickerOpen(true); setPickerCategory(null); setPickerEquipment(null); }}
                   style={{ width: "100%", background: COLORS.surface, border: `1px dashed ${COLORS.line}`, borderRadius: 10, padding: "12px", color: COLORS.steel, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 14 }}
                 >
                   <Plus size={14} /> 種目を追加
                 </button>
 
-                <button type="button" className="btn-tactile" onClick={finishWorkout} style={{ width: "100%", background: COLORS.green, border: "none", borderRadius: 10, padding: "13px", color: "#fff", fontSize: 14, fontWeight: 600 }}>
-                  ワークアウトを終了して保存
+                </fieldset>
+                {workoutSaveError && <div role="alert" style={{ color: COLORS.amber, marginBottom: 12 }}>保存・確認を完了できませんでした。{workoutSaveError}</div>}
+                <button type="button" disabled={isSavingWorkout || draft.isPersisting} className="btn-tactile" onClick={finishWorkout} style={{ width: "100%", background: COLORS.green, border: "none", borderRadius: 10, padding: "13px", color: "#fff", fontSize: 14, fontWeight: 600 }}>
+                  {isSavingWorkout ? "保存中..." : workoutSaveError ? "保存を再試行" : "ワークアウトを終了して保存"}
                 </button>
               </>
             )}
@@ -1229,7 +1456,7 @@ export default function Overload() {
                 return d.getFullYear() === historyMonth.year && d.getMonth() === historyMonth.month;
               });
               const workoutDays = new Set(monthSessions.map((s) => new Date(s.date).toDateString())).size;
-              const monthCalories = monthSessions.reduce((sum, s) => sum + (s.totalCalories ?? 0), 0);
+              const { totalCalories: monthCalories, hasUnknownCalories } = summarizeCalories(monthSessions);
               const goPrev = () => {
                 if (isEarliestMonth) return;
                 setSelectedDay(null);
@@ -1259,7 +1486,8 @@ export default function Overload() {
                     </div>
                     <div style={{ flex: 1, background: COLORS.surface, border: `1px solid ${COLORS.line}`, borderRadius: 12, padding: 14, textAlign: "center" }}>
                       <div style={{ fontSize: 10, color: COLORS.steelDim, marginBottom: 4 }}>合計消費カロリー</div>
-                      <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 22 }}>{monthCalories.toFixed(0)}<span style={{ fontSize: 13, marginLeft: 2 }}>kcal</span></div>
+                      <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 22 }}>{monthCalories == null ? "—" : monthCalories.toFixed(1)}<span style={{ fontSize: 13, marginLeft: 2 }}>kcal</span></div>
+                      {hasUnknownCalories && <div style={{ fontSize: 10 }}>記録済みの分のみ集計（未記録あり）</div>}
                     </div>
                   </div>
 
@@ -1275,9 +1503,20 @@ export default function Overload() {
                     return (
                       <>
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
-                          {dayLabels.map((l) => (
-                            <div key={l} style={{ color: COLORS.steelDim, fontSize: 11, textAlign: "center" }}>{l}</div>
-                          ))}
+						  {dayLabels.map((l, i) => (
+						    <div
+						      key={l}
+						      style={{
+						        color: i === 0 ? "#E89A9A" :
+						               i === 6 ? "#8CC9F2" :
+						               "#B8B8B8",
+						        fontSize: 11,
+						        textAlign: "center"
+						      }}
+						    >
+						      {l}
+						    </div>
+						  ))}
                         </div>
                         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 18 }}>
                           {cells.map((d, i) => {
@@ -1288,6 +1527,36 @@ export default function Overload() {
                               s.entries.some((e) => e.sets.some((set) => set.weight === prMap[e.exerciseId]))
                             );
                             const isSelected = selectedDay === d;
+							const date = new Date(historyMonth.year, historyMonth.month, d);
+							const dayOfWeek = date.getDay();
+							const holidays = [
+							  "2026-01-01",
+							  "2026-01-12",
+							  "2026-02-11",
+							  "2026-02-23",
+							  "2026-03-20",
+							  "2026-04-29",
+							  "2026-05-03",
+							  "2026-05-04",
+							  "2026-05-05",
+							  "2026-07-20",
+							  "2026-08-11",
+							  "2026-09-21",
+							  "2026-09-22",
+							  "2026-10-12",
+							  "2026-11-03",
+							  "2026-11-23",
+							];
+
+							const dateKey =
+							  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+							const isHoliday = holidays.includes(dateKey);
+
+							const dayColor =
+							  dayOfWeek === 0 || isHoliday ? "#E89A9A" :
+							  dayOfWeek === 6 ? "#8CC9F2" :
+							  "#B8B8B8";
                             const accentColor = isPrDay ? COLORS.amber : COLORS.red;
                             const selectColor = hasSession ? accentColor : COLORS.steel;
                             return (
@@ -1298,7 +1567,7 @@ export default function Overload() {
                                   aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                                   borderRadius: 8, fontSize: 12, background: isSelected ? `${selectColor}22` : hasSession ? `${accentColor}1A` : "transparent",
                                   border: `1px solid ${isSelected ? selectColor : hasSession ? accentColor : "transparent"}`,
-                                  color: hasSession ? COLORS.chalk : COLORS.steelDim, cursor: "pointer",
+                                  color: dayColor, cursor: "pointer",
                                 }}
                               >
                                 <span>{d}</span>
@@ -1344,7 +1613,7 @@ export default function Overload() {
                               <div key={s.id} style={{ background: COLORS.surface, border: `1px solid ${COLORS.line}`, borderRadius: 12, marginBottom: 10, padding: 14 }}>
                                 <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 15, marginBottom: 2 }}>{fmtDate(s.date)}</div>
                                 <div style={{ fontSize: 11, color: COLORS.steelDim, marginBottom: 12 }}>
-                                  {s.entries.length}種目 · 総量 {totalVolume.toLocaleString()}kg · 🔥{(s.totalCalories ?? 0).toFixed(0)}kcal
+                                  {s.entries.length}種目 · 総量 {totalVolume.toLocaleString()}kg · 🔥{s.totalCalories == null ? "未記録" : `${s.totalCalories.toFixed(1)}kcal`}
                                 </div>
                                 {s.entries.map((entry) => {
                                   const ex = exerciseMap[entry.exerciseId];
@@ -1422,48 +1691,50 @@ export default function Overload() {
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 12, color: COLORS.steel, marginBottom: 6 }}>名前</div>
                 <input
-                  type="text" placeholder="未設定" value={userName}
+                  type="text" placeholder="未設定" maxLength={50} value={userName}
                   onChange={(e) => setUserName(e.target.value)}
                   style={{ width: "100%", background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: 10, color: COLORS.chalk, fontSize: 14 }}
                 />
               </div>
 
               <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 12, color: COLORS.steel, marginBottom: 6 }}>性別</div>
+                <div style={{ fontSize: 12, color: COLORS.steel, marginBottom: 6 }}>性別（必須）</div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  {[{ v: "male", l: "男性" }, { v: "female", l: "女性" }, { v: "none", l: "未設定" }].map((g) => (
-                    <button type="button" key={g.v} onClick={() => setGender(g.v)}
+                  {[{ v: "male", l: "男性" }, { v: "female", l: "女性" }].map((g) => (
+                    <button type="button" key={g.v} aria-pressed={gender === g.v} onClick={() => setGender(g.v)}
                       style={{ flex: 1, background: gender === g.v ? COLORS.blue : COLORS.surfaceAlt, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: "10px 0", color: gender === g.v ? "#fff" : COLORS.steel, fontSize: 13 }}
                     >
                       {g.l}
                     </button>
                   ))}
                 </div>
+                {gender === "" && <div role="alert" style={{ color: COLORS.steel, fontSize: 12, marginTop: 6 }}>男性または女性を選択してください。選択するまでプロフィールは保存されません。</div>}
               </div>
 
               <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 12, color: COLORS.steel, marginBottom: 6 }}>年齢</div>
+                <div style={{ fontSize: 12, color: COLORS.steel, marginBottom: 6 }}>年齢（必須・0歳以上）</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <input
-                    type="number" inputMode="numeric" placeholder="未設定" value={age}
-                    onChange={(e) => setAge(e.target.value === "" ? "" : Math.max(1, parseInt(e.target.value, 10) || 0))}
+                    type="number" inputMode="numeric" min="0" step="1" required placeholder="年齢を入力（必須）" value={age}
+                    onChange={(e) => setAge(e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value, 10) || 0))}
                     style={{ flex: 1, background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: 10, color: COLORS.chalk, fontSize: 14 }}
                   />
                   <span style={{ fontSize: 12, color: COLORS.steelDim }}>歳</span>
                 </div>
+                {age === "" && <div role="alert" style={{ color: COLORS.steel, fontSize: 12 }}>年齢を入力してください。入力するまでプロフィールは保存されません。</div>}
               </div>
 
               <div>
                 <div style={{ fontSize: 12, color: COLORS.steel, marginBottom: 6 }}>体重(消費カロリー計算用)</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <input
-                    type="number" inputMode="decimal" value={bodyWeightKg}
+                    type="number" inputMode="decimal" required min="0.01" max="999.99" step="0.01" value={bodyWeightKg}
                     onChange={(e) => setBodyWeightKg(e.target.value === "" ? "" : Math.max(0, parseFloat(e.target.value) || 0))}
-                    onBlur={() => { if (bodyWeightKg === "" || bodyWeightKg === 0) setBodyWeightKg(65); }}
                     style={{ flex: 1, background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: 10, color: COLORS.chalk, fontSize: 14 }}
                   />
                   <span style={{ fontSize: 12, color: COLORS.steelDim }}>kg</span>
                 </div>
+                {profileWeightError(bodyWeightKg) && <div role="alert" style={{ color: COLORS.steel, fontSize: 12 }}>{profileWeightError(bodyWeightKg)}</div>}
               </div>
             </div>
 
@@ -1621,7 +1892,7 @@ export default function Overload() {
             <div style={{ background: COLORS.surfaceAlt, borderRadius: 12, padding: 18, marginBottom: 14 }}>
               <div style={{ fontSize: 11, color: COLORS.steelDim, marginBottom: 4 }}>推定消費カロリー</div>
               <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 32, fontWeight: 700, color: COLORS.red }}>
-                {completionSummary.calories.toFixed(0)}<span style={{ fontSize: 15, marginLeft: 4 }}>kcal</span>
+                {completionSummary.calories == null ? "未記録" : completionSummary.calories.toFixed(1)}<span style={{ fontSize: 15, marginLeft: 4 }}>kcal</span>
               </div>
             </div>
 
@@ -1637,7 +1908,7 @@ export default function Overload() {
             </div>
 
             <div style={{ fontSize: 10, color: COLORS.steelDim, marginBottom: 14 }}>
-              ※体重{bodyWeightKg}kgとMETs法による概算値です(挙上中・休憩中の時間を含む)
+              ※体重{completionSummary.bodyWeightKg}kgとMETs法による概算値です(挙上中・休憩中の時間を含む)
             </div>
 
             <button type="button" onClick={() => setCompletionSummary(null)} style={{ width: "100%", background: COLORS.red, border: "none", borderRadius: 10, padding: 12, color: "#fff", fontSize: 14, fontWeight: 600 }}>
