@@ -253,3 +253,252 @@ test("completion waits for queued set additions before deciding whether the work
   assert.equal(payload.exercises[0].sets[0].reps, 10);
   assert.equal(createStore(storage).getSnapshot().pendingPayload.exercises.length, 1);
 });
+
+test("controlled inputs publish synchronously while a browser lock is held", async () => {
+  const storage = memoryStorage();
+  const store = createStore(storage);
+  await store.setSession(session());
+  let release;
+  const held = new Promise(resolve => { release = resolve; });
+  const holding = storage.withLock(workoutDraftKey(1), () => held);
+  const first = store.setSession(previous => ({ ...previous, entries: previous.entries.map(entry => ({ ...entry, draftWeight: "5" })) }));
+  assert.equal(store.getSnapshot().session.entries[0].draftWeight, "5");
+  const second = store.setSession(previous => ({ ...previous, entries: previous.entries.map(entry => ({ ...entry, draftWeight: entry.draftWeight + "5" })) }));
+  assert.equal(store.getSnapshot().session.entries[0].draftWeight, "55");
+  const weights = [];
+  const unsubscribe = store.subscribe(() => weights.push(store.getSnapshot().session.entries[0].draftWeight));
+  release();
+  await holding;
+  await Promise.all([first, second]);
+  unsubscribe();
+  assert.ok(weights.every(weight => weight === "55")); // An old successful write must not render "5" again.
+  assert.equal(createStore(storage).getSnapshot().session.entries[0].draftWeight, "55");
+  assert.equal(store.getSnapshot().hasUnsavedChanges, false);
+});
+
+test("an older failed write cannot roll back the newer optimistic input", async () => {
+  const storage = memoryStorage();
+  const store = createStore(storage);
+  await store.setSession(session());
+  const write = storage.setItem;
+  storage.setItem = (key, raw) => {
+    if (JSON.parse(raw).session.entries[0].note === "older") throw new Error("quota for the older write");
+    return write(key, raw);
+  };
+  const older = store.setSession(previous => ({ ...previous, entries: previous.entries.map(entry => ({ ...entry, note: "older" })) }));
+  const newer = store.setSession(previous => ({ ...previous, entries: previous.entries.map(entry => ({ ...entry, note: "newest" })) }));
+  assert.equal(store.getSnapshot().session.entries[0].note, "newest");
+  const notes = [];
+  const unsubscribe = store.subscribe(() => notes.push(store.getSnapshot().session.entries[0].note));
+  assert.equal(await older, false);
+  assert.equal(await newer, true);
+  unsubscribe();
+  assert.ok(notes.every(note => note === "newest"));
+  assert.equal(createStore(storage).getSnapshot().session.entries[0].note, "newest");
+  assert.equal(store.getSnapshot().error, "");
+});
+
+test("persistent quota failures preserve the newest synchronous input for retry", async () => {
+  const storage = memoryStorage();
+  const store = createStore(storage);
+  await store.setSession(session());
+  const write = storage.setItem;
+  storage.setItem = () => { throw new Error("quota"); };
+  const first = store.setSession(previous => ({ ...previous, entries: previous.entries.map(entry => ({ ...entry, draftReps: "1" })) }));
+  const second = store.setSession(previous => ({ ...previous, entries: previous.entries.map(entry => ({ ...entry, draftReps: entry.draftReps + "00" })) }));
+  assert.equal(store.getSnapshot().session.entries[0].draftReps, "100");
+  assert.deepEqual(await Promise.all([first, second]), [false, false]);
+  assert.equal(store.getSnapshot().session.entries[0].draftReps, "100");
+  assert.equal(store.getSnapshot().hasUnsavedChanges, true);
+  storage.setItem = write;
+  assert.equal(await store.retry(), true);
+  assert.equal(createStore(storage).getSnapshot().session.entries[0].draftReps, "100");
+  assert.equal(store.getSnapshot().hasUnsavedChanges, false);
+});
+
+test("invalid and throwing updaters never publish or mutate the last valid snapshot", async () => {
+  const storage = memoryStorage();
+  const store = createStore(storage);
+  await store.setSession(session());
+  const raw = storage.getItem(workoutDraftKey(1));
+  const original = structuredClone(store.getSnapshot().session);
+  const snapshots = [];
+  const unsubscribe = store.subscribe(() => snapshots.push(store.getSnapshot().session));
+  for (const update of [
+    previous => { previous.entries[0].sets = null; return previous; },
+    previous => { previous.bodyWeightKg = 0; throw new Error("broken updater"); },
+    () => { throw undefined; },
+    () => undefined,
+    previous => ({ ...previous, entries: [null] }),
+  ]) {
+    const result = store.setSession(update);
+    assert.deepEqual(store.getSnapshot().session, original);
+    assert.equal(store.getSnapshot().errorKind, "validation");
+    assert.equal(await result, false);
+    assert.equal(storage.getItem(workoutDraftKey(1)), raw);
+  }
+  unsubscribe();
+  assert.ok(snapshots.every(value => Array.isArray(value.entries[0].sets)));
+  await assert.rejects(store.freezeForSave("2026-01-01T11:00:00+09:00"), /更新できません/);
+  assert.equal(await store.setSession(previous => previous), true);
+  assert.equal(store.getSnapshot().error, "");
+});
+
+test("a stale tab retains its newest optimistic input when its oldest queued write conflicts", async () => {
+  const storage = memoryStorage();
+  const original = createStore(storage);
+  await original.setSession(session());
+  const stale = createStore(storage);
+  await original.setSession(previous => ({ ...previous, entries: previous.entries.map(entry => ({ ...entry, note: "remote" })) }));
+  const remote = storage.getItem(workoutDraftKey(1));
+  const first = stale.setSession(previous => ({ ...previous, entries: previous.entries.map(entry => ({ ...entry, note: "local-1" })) }));
+  const second = stale.setSession(previous => ({ ...previous, entries: previous.entries.map(entry => ({ ...entry, note: "local-latest" })) }));
+  assert.equal(stale.getSnapshot().session.entries[0].note, "local-latest");
+  assert.deepEqual(await Promise.all([first, second]), [false, false]);
+  assert.equal(stale.getSnapshot().session.entries[0].note, "local-latest");
+  assert.equal(stale.getSnapshot().errorKind, "conflict");
+  assert.equal(storage.getItem(workoutDraftKey(1)), remote);
+  let called = false;
+  assert.equal(await stale.setSession(() => { called = true; return session(); }), false);
+  assert.equal(called, false);
+});
+
+test("freeze reserves pending immediately and waits for all optimistic writes before releasing a payload", async () => {
+  const storage = memoryStorage();
+  const store = createStore(storage);
+  await store.setSession(session());
+  let release;
+  const held = new Promise(resolve => { release = resolve; });
+  const holding = storage.withLock(workoutDraftKey(1), () => held);
+  const edited = store.setSession(previous => ({ ...previous, entries: previous.entries.map(entry => ({ ...entry, note: "latest before finish" })) }));
+  const completing = store.freezeForSave("2026-01-01T11:00:00+09:00");
+  let returned = false;
+  completing.then(() => { returned = true; });
+  assert.ok(store.getSnapshot().pendingPayload);
+  let called = false;
+  assert.equal(await store.setSession(() => { called = true; return session(); }), false);
+  assert.equal(called, false);
+  assert.equal(returned, false);
+  release();
+  await holding;
+  await edited;
+  const payload = await completing;
+  assert.equal(payload.exercises[0].note, "latest before finish");
+  assert.deepEqual(createStore(storage).getSnapshot().pendingPayload, payload);
+});
+
+test("same-value input is a synchronous no-op without a needless storage write", async () => {
+  const storage = memoryStorage();
+  const store = createStore(storage);
+  await store.setSession(session());
+  storage.setItem = () => { throw new Error("same input must not be written again"); };
+  let called = false;
+  const result = store.setSession(previous => { called = true; return previous; });
+  assert.equal(called, true);
+  assert.equal(await result, true);
+  assert.equal(store.getSnapshot().isPersisting, false);
+  assert.equal(store.getSnapshot().error, "");
+});
+
+test("rest timer state and raw setting survive reload while legacy v1 drafts remain valid", async () => {
+  const storage = memoryStorage();
+  const store = createStore(storage);
+  await store.setSession(session());
+  assert.deepEqual(createStore(storage).getSnapshot().session, session());
+  const timer = { durationSeconds: 90, remainingMs: 45000, deadlineAt: null,
+    nextSet: { exerciseId: 1, exerciseName: "Bench", setNumber: 2 } };
+  await store.setSession(previous => ({ ...previous, restSeconds: "", restTimer: timer }));
+  let restored = createStore(storage).getSnapshot().session;
+  assert.equal(restored.restSeconds, "");
+  assert.deepEqual(restored.restTimer, timer);
+  await store.setSession(previous => ({ ...previous, restSeconds: "10.9", restTimer: { ...timer, deadlineAt: 1800000000000 } }));
+  restored = createStore(storage).getSnapshot().session;
+  assert.equal(restored.restSeconds, "10.9");
+  assert.equal(restored.restTimer.deadlineAt, 1800000000000);
+  for (const restTimer of [{ ...timer, remainingMs: -1 }, { ...timer, durationSeconds: 1.5 }, { ...timer, deadlineAt: Infinity }]) {
+    assert.equal(await store.setSession(previous => ({ ...previous, restTimer })), false);
+    assert.equal(store.getSnapshot().session.restTimer.deadlineAt, 1800000000000);
+  }
+});
+
+
+test("duplicate exercise and React set keys reject corrupt drafts without overwriting them", async () => {
+  const duplicateExercise = session();
+  duplicateExercise.entries.push({ ...duplicateExercise.entries[0], note: "重複した種目" });
+  const duplicateSet = session();
+  duplicateSet.entries[0].sets.push({ ...duplicateSet.entries[0].sets[0], weight: 55 });
+  const mixedSetKeys = session();
+  mixedSetKeys.entries[0].sets = [{ id: 1, weight: 50, reps: 10 }, { id: "1", weight: 55, reps: 8 }];
+  for (const invalid of [duplicateExercise, duplicateSet, mixedSetKeys]) {
+    const storage = memoryStorage();
+    const raw = JSON.stringify({ version: 1, userId: 1, session: invalid, pendingPayload: null });
+    storage.setItem(workoutDraftKey(1), raw);
+    const store = createStore(storage);
+    assert.equal(store.getSnapshot().errorKind, "load");
+    assert.equal(store.getSnapshot().session, null);
+    assert.equal(await store.setSession(session()), false);
+    assert.equal(storage.getItem(workoutDraftKey(1)), raw);
+  }
+});
+
+test("duplicate keys in an updater retain the prior valid state and numeric legacy IDs remain valid", async () => {
+  const storage = memoryStorage();
+  const store = createStore(storage);
+  const legacy = session();
+  legacy.entries[0].sets = [{ id: 1, weight: 50, reps: 10 }, { id: 2, weight: 55, reps: 8 }];
+  assert.equal(await store.setSession(legacy), true);
+  assert.deepEqual(createStore(storage).getSnapshot().session, legacy);
+  const raw = storage.getItem(workoutDraftKey(1));
+  assert.equal(await store.setSession(previous => ({ ...previous, entries: [...previous.entries, previous.entries[0]] })), false);
+  assert.deepEqual(store.getSnapshot().session, legacy);
+  assert.equal(store.getSnapshot().errorKind, "validation");
+  assert.equal(await store.setSession(previous => ({ ...previous, entries: previous.entries.map(entry => ({
+    ...entry, sets: [...entry.sets, { id: "1", weight: 60, reps: 5 }],
+  })) })), false);
+  assert.deepEqual(store.getSnapshot().session, legacy);
+  assert.equal(store.getSnapshot().errorKind, "validation");
+  assert.equal(storage.getItem(workoutDraftKey(1)), raw);
+});
+
+
+test("explicit retry recovers the retained valid state after validation blocked completion", async () => {
+  const storage = memoryStorage();
+  const store = createStore(storage);
+  await store.setSession(session());
+  let release;
+  const held = new Promise(resolve => { release = resolve; });
+  const holding = storage.withLock(workoutDraftKey(1), () => held);
+  const queued = store.setSession(previous => ({ ...previous, entries: previous.entries.map(entry => ({ ...entry, note: "最後の正常な入力" })) }));
+  assert.equal(await store.setSession(previous => ({ ...previous, entries: [null] })), false);
+  assert.equal(store.getSnapshot().errorKind, "validation");
+  release();
+  await holding;
+  await queued;
+  assert.equal(store.getSnapshot().errorKind, "validation"); // The old pending write cannot dismiss this notice.
+  await assert.rejects(store.freezeForSave("2026-01-01T11:00:00+09:00"), /更新できません/);
+  assert.equal(await store.retry(), true);
+  assert.equal(store.getSnapshot().error, "");
+  const payload = await store.freezeForSave("2026-01-01T11:00:00+09:00");
+  assert.equal(payload.exercises[0].note, "最後の正常な入力");
+  assert.deepEqual(createStore(storage).getSnapshot().pendingPayload, payload);
+});
+
+test("a pending explicit retry cannot dismiss a newer invalid updater", async () => {
+  const storage = memoryStorage();
+  const store = createStore(storage);
+  await store.setSession(session());
+  assert.equal(await store.setSession(() => undefined), false);
+  let release;
+  const held = new Promise(resolve => { release = resolve; });
+  const holding = storage.withLock(workoutDraftKey(1), () => held);
+  const retry = store.retry();
+  assert.equal(await store.setSession(() => { throw new Error("new invalid update"); }), false);
+  release();
+  await holding;
+  assert.equal(await retry, true);
+  assert.equal(store.getSnapshot().errorKind, "validation");
+  assert.match(store.getSnapshot().error, /new invalid update/);
+  assert.deepEqual(store.getSnapshot().session, session());
+  assert.equal(await store.retry(), true);
+  assert.equal(store.getSnapshot().error, "");
+});

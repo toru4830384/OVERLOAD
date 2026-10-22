@@ -191,7 +191,7 @@ export default function HistoryScreen({
                                   const ex = exerciseMap[entry.exerciseId];
                                   return (
                                     <div key={entry.exerciseId} style={{ marginBottom: 10 }}>
-                                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{ex ? ex.name : "削除済み種目"}</div>
+                                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{ex?.name || entry.exerciseName || `種目 #${entry.exerciseId}（情報未取得）`}</div>
                                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: entry.note ? 6 : 0 }}>
                                         {entry.sets.map((set, i) => (
                                           <span key={i} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, background: COLORS.surfaceAlt, padding: "3px 8px", borderRadius: 6, color: COLORS.steel }}>

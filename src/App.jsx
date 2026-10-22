@@ -1,16 +1,17 @@
-import { createHistoryLoader } from "./features/workouts/historyLoader.js";
+import { useWorkoutData } from "./features/workouts/useWorkoutData.js";
+import { useWorkoutRest } from "./features/workouts/useWorkoutRest.js";
+import RestTimer from "./components/RestTimer.jsx";
+import { addWorkoutSet, removeWorkoutEntry, removeWorkoutSet, updateWorkoutDraft } from "./features/workouts/sessionActions.js";
 import WorkoutDraftNotice from "./components/WorkoutDraftNotice.jsx";
 import { workoutStartError } from "./features/workouts/start.js";
-import { workoutRepetitionsError, parseWorkoutRepetitions, workoutWeightError } from "./features/workouts/validation.js";
-import { useState, useEffect, useMemo, useRef } from "react";
-import { DEFAULT_EXERCISES } from "./data/exercises.js";
+import { useState, useMemo, useRef } from "react";
 import { useProfile } from "./features/profile/useProfile.js";
-import { ApiError, getExercises, getWorkoutHistory, saveWorkout } from "./api/client.js";
+import { ApiError, saveWorkout } from "./api/client.js";
 import { summarizeCalories } from "./features/workouts/history.js";
 import { useWorkoutDraft } from "./features/workouts/useWorkoutDraft.js";
 import { getExerciseDetail } from "./features/exercises/exerciseDetails.js";
 import { COLORS } from "./theme.js";
-import { Dumbbell, History, ListChecks, User, Pause, Play } from "lucide-react";
+import { Dumbbell, History, ListChecks, User } from "lucide-react";
 import { fmtDate } from "./utils/date.js";
 import WorkoutScreen from "./screens/WorkoutScreen.jsx";
 import HistoryScreen from "./screens/HistoryScreen.jsx";
@@ -41,6 +42,11 @@ function vibrate() {
   } catch { /* 音・振動が使えなくても記録操作は継続する。 */ }
 }
 
+function notifyRestFinished() {
+  beep();
+  vibrate();
+}
+
 export default function Overload() {
   const profileState = useProfile(1);
   const { name: userName, gender, age, bodyWeightKg } = profileState.profile;
@@ -48,18 +54,14 @@ export default function Overload() {
   const setGender = value => profileState.update("gender", value);
   const setAge = value => profileState.update("age", value);
   const setBodyWeightKg = value => profileState.update("bodyWeightKg", value);
-  const [dataError, setDataError] = useState("");
-  const [dataReload, setDataReload] = useState(0);
-  const [dataReady, setDataReady] = useState(false);
+  const data = useWorkoutData(1);
+  const { exercises, sessions, loadHistory, ready: dataReady, error: dataError } = data;
   const [workoutError, setWorkoutError] = useState("");
   const [isSavingWorkout, setIsSavingWorkout] = useState(false);
   const savingWorkout = useRef(false);
   const draft = useWorkoutDraft(1);
   const activeSession = draft.session;
   const setActiveSession = draft.setSession;
-  const [exercises, setExercises] = useState(DEFAULT_EXERCISES);
-  const [sessions, setSessions] = useState([]);
-  const loadHistory = useMemo(() => createHistoryLoader(signal => getWorkoutHistory(1, signal), setSessions), []);
   const [saveConflict, setSaveConflict] = useState(false);
   const [tab, setTab] = useState("workout");
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -67,14 +69,12 @@ export default function Overload() {
   const [pickerEquipment, setPickerEquipment] = useState(null);
   const [detailExercise, setDetailExercise] = useState(null);
 
-  const [restSeconds, setRestSeconds] = useState(90);
-  const [restRemaining, setRestRemaining] = useState(null);
-  const [restRunning, setRestRunning] = useState(false);
-  const [restJustFinished, setRestJustFinished] = useState(false);
-  const [restNextSet, setRestNextSet] = useState(null);
+  const workoutLocked = isSavingWorkout || Boolean(draft.pendingPayload) || saveConflict
+    || ["load", "clear", "conflict"].includes(draft.errorKind);
+  const rest = useWorkoutRest({ session: activeSession, setSession: setActiveSession,
+    locked: workoutLocked, onFinish: notifyRestFinished });
   const [completionSummary, setCompletionSummary] = useState(null);
-  const [weightError, setWeightError] = useState("");
-  const [repsError, setRepsError] = useState("");
+  const [entryErrors, setEntryErrors] = useState({});
   const [exerciseSearch, setExerciseSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterEquipment, setFilterEquipment] = useState("all");
@@ -83,40 +83,6 @@ export default function Overload() {
     return { year: now.getFullYear(), month: now.getMonth() };
   });
   const [selectedDay, setSelectedDay] = useState(null);
-
-  // 通信はAPIモジュール、プロフィール保存は専用Hookへ分離する。
-  useEffect(() => {
-    const controller = new AbortController();
-    Promise.all([getExercises(controller.signal), loadHistory(controller.signal)])
-      .then(([catalog]) => {
-        if (controller.signal.aborted) return;
-        setDataReady(true);
-        setExercises(catalog);
-        setDataError("");
-      }).catch(error => { if (!controller.signal.aborted) { setDataError(error.message); setDataReady(false); } });
-    return () => controller.abort();
-  }, [dataReload, loadHistory]);
-
-  // rest timer tick
-  useEffect(() => {
-    if (!restRunning) return;
-    const t = setTimeout(() => {
-      if (restRemaining <= 1) {
-        setRestRemaining(0);
-        setRestRunning(false);
-        beep();
-        vibrate();
-        setRestJustFinished(true);
-      } else setRestRemaining(r => r - 1);
-    }, restRemaining <= 0 ? 0 : 1000);
-    return () => clearTimeout(t);
-  }, [restRunning, restRemaining]);
-
-  useEffect(() => {
-    if (!restJustFinished) return;
-    const timer = setTimeout(() => setRestJustFinished(false), 2500);
-    return () => clearTimeout(timer);
-  }, [restJustFinished]);
 
   const exerciseMap = useMemo(() => {
     const m = {};
@@ -145,97 +111,92 @@ export default function Overload() {
     return detailExercise ? getExerciseDetail(detailExercise) : null;
   }, [detailExercise]);
 
+  // 描画後に保存・競合状態が変わっても、古いイベントで編集しない。
+  function editingBlocked() {
+    const current = draft.getSnapshot();
+    return savingWorkout.current || Boolean(current.pendingPayload) || saveConflict
+      || ["load", "clear", "conflict"].includes(current.errorKind);
+  }
+
   function startWorkout() {
-    if (!dataReady || dataError || (draft.errorKind === "load" || draft.errorKind === "clear" || draft.errorKind === "conflict")) return;
+    if (editingBlocked() || draft.getSnapshot().session || !dataReady || dataError) return;
     if (workoutStartError(profileState, { dataReady, dataError })) {
       setTab("profile");
       return;
     }
     setWorkoutError("");
     setSaveConflict(false);
-    setActiveSession({ id: crypto.randomUUID(), date: new Date().toISOString(), bodyWeightKg: Number(bodyWeightKg), entries: [] });
+    setEntryErrors({});
+    void setActiveSession({ id: crypto.randomUUID(), date: new Date().toISOString(),
+      bodyWeightKg: Number(bodyWeightKg), entries: [], restSeconds: rest.input, restTimer: null });
   }
 
   function addExerciseToSession(exId) {
-    setActiveSession((prev) => {
-      if (!prev) return prev;
-      if (prev.entries.some((e) => e.exerciseId === exId)) return prev;
-      return { ...prev, entries: [...prev.entries, { exerciseId: exId, exerciseName: exerciseMap[exId]?.name || "", sets: [], draftWeight: "", draftReps: "" }] };
+    if (editingBlocked() || !data.catalogReady) return;
+    void setActiveSession(previous => {
+      if (!previous || previous.entries.some(entry => entry.exerciseId === exId)) return previous;
+      return { ...previous, entries: [...previous.entries, { exerciseId: exId,
+        exerciseName: exerciseMap[exId]?.name || "", sets: [], draftWeight: "", draftReps: "" }] };
     });
     setPickerOpen(false);
     setPickerCategory(null);
     setPickerEquipment(null);
   }
 
-  function updateDraft(entryIdx, field, value) {
-    setActiveSession((prev) => {
-      const entries = [...prev.entries];
-      entries[entryIdx] = { ...entries[entryIdx], [field]: value };
-      return { ...prev, entries };
-    });
+  function updateDraft(exerciseId, field, value) {
+    if (editingBlocked()) return;
+    void setActiveSession(previous => updateWorkoutDraft(previous, exerciseId, field, value));
+    const errorField = { draftWeight: "weight", draftReps: "reps" }[field];
+    if (errorField) setEntryErrors(previous => ({ ...previous,
+      [exerciseId]: { ...previous[exerciseId], [errorField]: "" } }));
   }
 
-  function addSet(entryIdx) {
-    const entry = activeSession.entries[entryIdx];
-	const w = Number(entry.draftWeight);
-	const r = parseWorkoutRepetitions(entry.draftReps);
-	const weightMessage = workoutWeightError(entry.draftWeight);
-	const weightInvalid = Boolean(weightMessage);
-	const repsMessage = workoutRepetitionsError(entry.draftReps);
-	const repsInvalid = Boolean(repsMessage);
-
-	setWeightError(
-	  weightMessage
-	);
-
-	setRepsError(
-	  repsMessage
-	);
-
-	if (weightInvalid || repsInvalid) return;
-    const ex = exerciseMap[entry.exerciseId];
-    const nextSetNumber = entry.sets.length + 2; // the set just logged is (length+1); the upcoming one is +2
-    setActiveSession((prev) => {
-      const entries = [...prev.entries];
-      const e2 = { ...entries[entryIdx] };
-      e2.sets = [...e2.sets, { weight: w, reps: r, id: Date.now() + Math.random() }];
-      entries[entryIdx] = e2;
-      return { ...prev, entries };
+  function addSet(exerciseId) {
+    if (editingBlocked()) return;
+    let outcome;
+    void setActiveSession(previous => {
+      outcome = addWorkoutSet(previous, exerciseId);
+      return rest.error ? previous : outcome.session;
     });
-    setRestNextSet({ exerciseName: ex ? ex.name : "", setNumber: nextSetNumber });
-    setRestRemaining(restSeconds);
-    setRestRunning(true);
+    if (!outcome) return;
+    setEntryErrors(previous => ({ ...previous, [exerciseId]: outcome.errors }));
+    if (outcome.added && !rest.error) rest.start({ ...outcome.nextSet,
+      exerciseName: exerciseMap[exerciseId]?.name || outcome.nextSet.exerciseName });
   }
 
-  function removeSet(entryIdx, setId) {
-    setActiveSession((prev) => {
-      const entries = [...prev.entries];
-      const entry = { ...entries[entryIdx] };
-      entry.sets = entry.sets.filter((s) => s.id !== setId);
-      entries[entryIdx] = entry;
-      return { ...prev, entries };
-    });
+  function removeSet(exerciseId, setId) {
+    if (editingBlocked()) return;
+    if (rest.nextSet?.exerciseId === exerciseId) void rest.clear();
+    void setActiveSession(previous => removeWorkoutSet(previous, exerciseId, setId));
   }
 
-  function removeEntry(entryIdx) {
-    setActiveSession((prev) => {
-      const entries = prev.entries.filter((_, i) => i !== entryIdx);
-      return { ...prev, entries };
+  function removeEntry(exerciseId) {
+    if (editingBlocked()) return;
+    if (rest.nextSet?.exerciseId === exerciseId) void rest.clear();
+    void setActiveSession(previous => removeWorkoutEntry(previous, exerciseId));
+    setEntryErrors(previous => {
+      const next = { ...previous };
+      delete next[exerciseId];
+      return next;
     });
   }
 
   async function finishWorkout() {
-    if (!activeSession || savingWorkout.current) return;
+    const current = draft.getSnapshot();
+    if (!current.session || savingWorkout.current || saveConflict || ["load", "clear", "conflict"].includes(current.errorKind)) return;
+    // 下書きの保存待ちがあっても、終了ボタンを押した時刻を固定する。
+    const finishedAt = new Date().toISOString();
     savingWorkout.current = true;
     setIsSavingWorkout(true);
     setWorkoutError("");
-    setRestRunning(false);
     let accepted = false;
     try {
-      const payload = await draft.freezeForSave();
+      if (!current.pendingPayload && !await rest.clear()) {
+        throw new Error(draft.getSnapshot().error || "下書きを保存できませんでした。再試行してください。");
+      }
+      const payload = await draft.freezeForSave(finishedAt);
       if (payload.exercises.length === 0) {
         await draft.complete();
-        setRestRemaining(null);
         return;
       }
       const result = await saveWorkout(payload);
@@ -252,14 +213,13 @@ export default function Overload() {
         exerciseCount: savedSession.entries.length,
       });
       await draft.complete();
-      setRestRemaining(null);
     } catch (error) {
       // 入力拒否と、POST成功後の確認失敗・通信断を区別する。
       if (!accepted && error instanceof ApiError) {
         if ([400, 404, 422].includes(error.status)) await draft.resumeAfterRejection(error.status);
         setSaveConflict(error.status === 409);
       }
-      setWorkoutError(error.message);
+      setWorkoutError(error.message || "保存できませんでした。同じ内容で再試行してください。");
     } finally {
       savingWorkout.current = false;
       setIsSavingWorkout(false);
@@ -300,7 +260,7 @@ export default function Overload() {
       `}</style>
 
       {/* rest timer complete flash + next-set message */}
-      {restJustFinished && (
+      {rest.justFinished && (
         <>
           <div style={{ position: "fixed", inset: 0, background: COLORS.red, opacity: 0, pointerEvents: "none", zIndex: 40, animation: "restFlash 1.2s ease-in-out 2" }} />
           <div
@@ -312,11 +272,11 @@ export default function Overload() {
             }}
           >
             <div style={{ fontSize: 26, marginBottom: 6 }}>💪</div>
-            {restNextSet && restNextSet.exerciseName && (
-              <div style={{ fontSize: 12, color: COLORS.steelDim, marginBottom: 4 }}>{restNextSet.exerciseName}</div>
+            {rest.nextSet && rest.nextSet.exerciseName && (
+              <div style={{ fontSize: 12, color: COLORS.steelDim, marginBottom: 4 }}>{rest.nextSet.exerciseName}</div>
             )}
             <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 20, color: COLORS.chalk }}>
-              {restNextSet ? `${restNextSet.setNumber}セット目を始めましょう!` : "次のセットを始めましょう!"}
+              {rest.nextSet ? `${rest.nextSet.setNumber}セット目を始めましょう!` : "次のセットを始めましょう!"}
             </div>
           </div>
         </>
@@ -384,38 +344,13 @@ export default function Overload() {
 		    : ""}
 	      </div>
 	    </div>
-	    {restRemaining !== null && (() => {
-	      const gaugeColor = !restRunning ? COLORS.steelDim : restRemaining <= 5 ? COLORS.red : COLORS.amber;
-	      const r = 21, circumference = 2 * Math.PI * r;
-	      const progress = restSeconds > 0 ? Math.max(0, Math.min(1, restRemaining / restSeconds)) : 0;
-	      const dashoffset = circumference * (1 - progress);
-	      return (
-			<div
-			  disabled={isSavingWorkout || Boolean(workoutError)} onClick={() => setRestRunning((r2) => !r2)}
-			  style={{ position: "relative", width: 52, height: 52, flexShrink: 0, marginLeft: "auto", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", animation: restRunning && restRemaining <= 5 ? "pulseGlow 1s infinite" : "none", borderRadius: "50%" }}
-			>
-	          <svg width="52" height="52" viewBox="0 0 52 52" style={{ position: "absolute", top: 0, left: 0, transform: "rotate(-90deg)" }}>
-	            <circle cx="26" cy="26" r={r} fill="none" stroke={COLORS.line} strokeWidth="4" />
-	            <circle
-	              cx="26" cy="26" r={r} fill="none" stroke={gaugeColor} strokeWidth="4" strokeLinecap="round"
-	              strokeDasharray={circumference} strokeDashoffset={dashoffset}
-	              style={{ transition: "stroke-dashoffset 1s linear, stroke 0.3s" }}
-	            />
-	          </svg>
-	          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-	            {restRunning ? <Pause size={9} color={COLORS.steelDim} /> : <Play size={9} color={COLORS.steelDim} />}
-	            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, fontWeight: 500, letterSpacing: 0.5, color: gaugeColor, textShadow: `0 0 6px ${gaugeColor}88` }}>
-	              {Math.floor(restRemaining / 60)}:{String(restRemaining % 60).padStart(2, "0")}
-	            </span>
-	          </div>
-	        </div>
-	      );
-	    })()}
+        <RestTimer remaining={rest.remaining} running={rest.running} durationSeconds={rest.durationSeconds}
+          disabled={workoutLocked} onToggle={() => { if (!editingBlocked()) rest.toggle(); }} />
 	  </div>
 
       {dataError && <div role="alert" style={{ padding: 12, color: COLORS.amber }}>
         記録の読み込みに失敗しました。{dataError}
-        <button type="button" onClick={() => setDataReload(n => n + 1)}>再読み込み</button>
+        <button type="button" onClick={data.retry}>再読み込み</button>
       </div>}
       <WorkoutDraftNotice draft={draft} />
       {saveConflict && <div role="alert" style={{ padding: 12, color: COLORS.amber }}>
@@ -438,24 +373,27 @@ export default function Overload() {
           <WorkoutScreen
             activeSession={activeSession}
             startWorkout={startWorkout}
-            canAddExercise={dataReady && !dataError}
+            canAddExercise={data.catalogReady}
             canStart={dataReady && !dataError && !draft.isPersisting && draft.errorKind !== "load" && draft.errorKind !== "clear" && draft.errorKind !== "conflict"}
             startLabel={!dataReady || dataError ? "記録を読み込んでいます" : profileState.validationError ? "プロフィールを入力" : profileState.saveState !== "saved" ? "プロフィールの保存を確認" : "ワークアウト開始"}
             gender={gender}
-            restSeconds={restSeconds}
-            setRestSeconds={setRestSeconds}
+            restInput={rest.input}
+            setRestInput={rest.setInput}
+            restError={rest.error}
             exerciseMap={exerciseMap}
             prMap={prMap}
             setDetailExercise={setDetailExercise}
             removeEntry={removeEntry}
             updateDraft={updateDraft}
             bodyWeightKg={activeSession?.bodyWeightKg ?? bodyWeightKg}
-            isSaving={isSavingWorkout || draft.isPersisting}
-            isLocked={isSavingWorkout || Boolean(draft.pendingPayload) || draft.errorKind === "conflict"}
-            saveError={workoutError || (draft.pendingPayload ? "保存結果の確認が必要です。同じ内容で完了を再試行してください。" : "")}
+            isSaving={isSavingWorkout}
+            isLocked={workoutLocked}
+            canFinish={!saveConflict && !["load", "clear", "conflict"].includes(draft.errorKind)}
+            pendingSave={Boolean(draft.pendingPayload)}
+            saveRecovery={saveConflict ? "conflict" : draft.pendingPayload ? "retry" : "edit"}
+            saveError={isSavingWorkout ? "" : workoutError || (draft.pendingPayload ? "保存結果の確認が必要です。" : "")}
             removeSet={removeSet}
-            weightError={weightError}
-            repsError={repsError}
+            entryErrors={entryErrors}
             addSet={addSet}
             setPickerOpen={setPickerOpen}
             setPickerCategory={setPickerCategory}

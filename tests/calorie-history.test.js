@@ -74,3 +74,15 @@ test("calorie totals preserve stored hundredths without floating point drift", (
   });
   assert.deepEqual(summarizeCalories([{ totalCalories: 0 }]), { totalCalories: 0, hasUnknownCalories: false });
 });
+
+test("history keeps API exercise names independently of catalog availability", () => {
+  const rows = [{ ...canonicalRow, exerciseId: 176, exerciseName: "種目一覧未取得の種目" }, {
+    ...canonicalRow, exerciseId: 177, exerciseName: null,
+  }];
+  const restored = restoreHistory(JSON.parse(JSON.stringify(rows)));
+  assert.equal(restored[0].entries[0].exerciseName, "種目一覧未取得の種目");
+  assert.equal(restored[0].entries[1].exerciseName, "");
+  assert.equal(restored[0].entries[1].exerciseId, 177);
+  assert.equal(restored[0].totalCalories, 170.1);
+  assert.equal(restored[0].entries.length, 2);
+});

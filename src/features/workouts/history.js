@@ -7,7 +7,9 @@ export function restoreHistory(rows) {
       bodyWeightKg: item.bodyWeightKg == null ? null : Number(item.bodyWeightKg),
       totalCalories: item.totalCalories == null ? null : Number(item.totalCalories), entries: [],
     });
-    grouped.get(item.sessionId).entries.push({ exerciseId: item.exerciseId, note: item.note || "", sets: item.sets.map(set => ({ weight: Number(set.weightKg), reps: set.reps })) });
+    // 種目一覧が未取得でも、履歴APIが返した名称で記録を表示できるようにする。
+    grouped.get(item.sessionId).entries.push({ exerciseId: item.exerciseId, exerciseName: item.exerciseName || "",
+      note: item.note || "", sets: item.sets.map(set => ({ weight: Number(set.weightKg), reps: set.reps })) });
   }
   return [...grouped.values()].sort((a, b) => new Date(b.date) - new Date(a.date));
 }
