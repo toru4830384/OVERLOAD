@@ -20,8 +20,9 @@ import overload_api.model.WorkoutSession;
 public interface WorkoutSessionMapper {
 
     /**
-     * 全てのワークアウトセッションを取得する。
+     * 指定ユーザーのワークアウトセッションを取得する。
      *
+     * @param userId 認証済み所有者ID
      * @return ワークアウトセッション一覧
      */
     @Select("""
@@ -33,9 +34,10 @@ public interface WorkoutSessionMapper {
             body_weight_kg AS bodyWeightKg, total_calories AS totalCalories,
             client_request_id AS clientRequestId, request_hash AS requestHash
         FROM workout_sessions
+        WHERE user_id = #{userId}
         ORDER BY id
         """)
-    List<WorkoutSession> findAll();
+    List<WorkoutSession> findByUserId(Long userId);
 
     /**
      * ワークアウトセッションを登録する。

@@ -24,8 +24,9 @@ import overload_api.service.WorkoutService;
 /**
  * WorkoutControllerの単体テストを行うクラス。
  */
+@org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc(addFilters = false)
 @WebMvcTest(WorkoutController.class)
-class WorkoutControllerTest {
+class WorkoutControllerTest extends overload_api.support.ControllerIdentityTest {
 
     /**
      * MockMvcを使用してControllerのHTTPリクエストをテストする。
@@ -67,7 +68,7 @@ class WorkoutControllerTest {
 
         String requestBody = """
                 {
-                    "userId": 1,
+
                     "startedAt": "2026-01-01T10:00:00+09:00",
                     "finishedAt": "2026-01-01T11:00:00+09:00",
                     "bodyWeightKg": 70.00,
@@ -144,7 +145,7 @@ class WorkoutControllerTest {
 
         String requestBody = """
                 {
-                    "userId": 1,
+
                     "startedAt": "2026-01-01T10:00:00+09:00",
                     "finishedAt": "2026-01-01T11:00:00+09:00",
                     "bodyWeightKg": 70.00,
@@ -191,13 +192,13 @@ class WorkoutControllerTest {
     }
 
     /**
-     * userIdがnullの場合に、
+     * 所有者IDの入力を受け付けないため、明示nullでも、
      * バリデーションエラーになることを確認する。
      *
      * @throws Exception MockMvc実行時の例外
      */
     @Test
-    void createReturnsBadRequestWhenUserIdIsNull()
+    void createRejectsClientSuppliedOwnershipEvenWhenNull()
             throws Exception {
 
         String requestBody = """
@@ -248,7 +249,7 @@ class WorkoutControllerTest {
 
         String requestBody = """
                 {
-                    "userId": 1,
+
                     "startedAt": "2026-01-01T10:00:00+09:00",
                     "finishedAt": "2026-01-01T11:00:00+09:00",
                     "bodyWeightKg": 70.00,
@@ -294,7 +295,7 @@ class WorkoutControllerTest {
 
         String requestBody = """
                 {
-                    "userId": 1,
+
                     "startedAt": "2026-01-01T10:00:00+09:00",
                     "finishedAt": "2026-01-01T11:00:00+09:00",
                     "bodyWeightKg": 70.00,
@@ -340,7 +341,7 @@ class WorkoutControllerTest {
 
         String requestBody = """
                 {
-                    "userId": 1,
+
                     "startedAt": "2026-01-01T10:00:00+09:00",
                     "finishedAt": "2026-01-01T11:00:00+09:00",
                     "bodyWeightKg": 70.00,
@@ -386,7 +387,7 @@ class WorkoutControllerTest {
 
         String requestBody = """
                 {
-                    "userId": 1,
+
                     "startedAt": "2026-01-01T10:00:00+09:00",
                     "finishedAt": "2026-01-01T11:00:00+09:00",
                     "bodyWeightKg": 70.00,
@@ -432,7 +433,7 @@ class WorkoutControllerTest {
 
         String requestBody = """
                 {
-                    "userId": 1,
+
                     "startedAt": "2026-01-01T10:00:00+09:00",
                     "finishedAt": "2026-01-01T11:00:00+09:00",
                     "bodyWeightKg": 70.00,
@@ -466,7 +467,7 @@ class WorkoutControllerTest {
 
         String requestBody = """
                 {
-                    "userId": 1,
+
                     "startedAt": "2026-01-01T10:00:00+09:00",
                     "finishedAt": "2026-01-01T11:00:00+09:00",
                     "bodyWeightKg": 70.00,
@@ -500,7 +501,7 @@ class WorkoutControllerTest {
 
         String requestBody = """
                 {
-                    "userId": 1,
+
                     "startedAt": "2026-01-01T10:00:00+09:00",
                     "finishedAt": "2026-01-01T11:00:00+09:00",
                     "bodyWeightKg": 70.00,
@@ -537,7 +538,7 @@ class WorkoutControllerTest {
 
         String requestBody = """
                 {
-                    "userId": 1,
+
                     "startedAt": "2026-01-01T10:00:00+09:00",
                     "finishedAt": "2026-01-01T11:00:00+09:00",
                     "bodyWeightKg": 70.00,
@@ -584,7 +585,7 @@ class WorkoutControllerTest {
 
         String requestBody = """
                 {
-                    "userId": 1,
+
                     "startedAt": "2026-01-01T10:00:00+09:00",
                     "finishedAt": "2026-01-01T11:00:00+09:00",
                     "bodyWeightKg": 70.00,
@@ -625,7 +626,7 @@ class WorkoutControllerTest {
 
         String requestBody = """
                 {
-                    "userId": 1,
+
                     "startedAt": "2026-01-01T10:00:00+09:00",
                     "finishedAt": "2026-01-01T11:00:00+09:00",
                     "bodyWeightKg": 70.00,
@@ -665,7 +666,7 @@ class WorkoutControllerTest {
 
         String requestBody = """
                 {
-                    "userId": 1,
+
                     "startedAt": "2026-01-01T10:00:00+09:00",
                     "finishedAt": "2026-01-01T11:00:00+09:00",
                     "bodyWeightKg": 70.00,
@@ -708,7 +709,7 @@ class WorkoutControllerTest {
 
         String requestBody = """
                 {
-                    "userId": 1,
+
                     "startedAt": "2026-01-01T10:00:00+09:00",
                     "finishedAt": "2026-01-01T11:00:00+09:00",
                     "bodyWeightKg": 70.00,
@@ -755,7 +756,7 @@ class WorkoutControllerTest {
 
         String requestBody = """
                 {
-                    "userId": 1,
+
                     "startedAt": "2026-01-01T10:00:00+09:00",
                     "finishedAt": "2026-01-01T11:00:00+09:00",
                     "bodyWeightKg": 70.00,
@@ -823,7 +824,7 @@ class WorkoutControllerTest {
         mockMvc.perform(
                 org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                         .get("/api/workouts/history")
-                        .param("user_id", "1"))
+                        )
                 .andExpect(
                         org.springframework.test.web.servlet.result.MockMvcResultMatchers
                                 .status().isOk())
@@ -867,6 +868,7 @@ class WorkoutControllerTest {
     @Test
     void findHistoryReturnsEmptyListWhenHistoryDoesNotExist()
             throws Exception {
+        asUser(9999L);
 
         when(workoutService.findHistoryByUserId(9999L))
                 .thenReturn(List.of());
@@ -874,7 +876,7 @@ class WorkoutControllerTest {
         mockMvc.perform(
                 org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                         .get("/api/workouts/history")
-                        .param("user_id", "9999"))
+                        )
                 .andExpect(
                         org.springframework.test.web.servlet.result.MockMvcResultMatchers
                                 .status().isOk())
@@ -890,7 +892,7 @@ class WorkoutControllerTest {
     void createPassesAllRequestFieldsToServiceInOrder() throws Exception {
         when(workoutService.create(any())).thenReturn(List.of());
         String body = """
-                {"userId":42,
+                {
                     "startedAt": "2026-01-01T10:00:00+09:00",
                     "finishedAt": "2026-01-01T11:00:00+09:00",
                     "bodyWeightKg": 70.00,
@@ -910,7 +912,7 @@ class WorkoutControllerTest {
         verify(workoutService).create(captor.capture());
         var request = captor.getValue();
         assertEquals(java.time.OffsetDateTime.parse("2026-01-01T10:00:00+09:00").toInstant(), captor.getValue().getStartedAt().toInstant());
-        assertEquals(42L, request.getUserId());
+        assertEquals(1L, request.getUserId());
         assertEquals(java.time.Instant.parse("2026-01-01T02:00:00Z"), request.getFinishedAt().toInstant());
         assertEquals(new BigDecimal("70.00"), request.getBodyWeightKg());
         assertEquals("12345678-1234-1234-1234-123456789abc", request.getClientRequestId());

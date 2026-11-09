@@ -1,7 +1,7 @@
 package overload_api.controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
+import overload_api.auth.CurrentUser;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,7 +17,7 @@ import overload_api.service.UserService;
  * ユーザー情報に関するAPIを提供するコントローラー。
  */
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/me")
 public class UserController {
 
     private final UserService userService;
@@ -32,30 +32,27 @@ public class UserController {
     }
 
     /**
-     * 指定されたIDのユーザー情報を取得する。
+     * ログイン本人のユーザー情報を取得する。
      *
-     * @param id ユーザーID
      * @return ユーザー情報
      */
-    @GetMapping("/{id}")
-    public UserResponse findById(@PathVariable Long id) {
-        return UserApiMapper.toResponse(userService.findById(id));
+    @GetMapping
+    public UserResponse findById() {
+        return UserApiMapper.toResponse(userService.findById(CurrentUser.id()));
     }
 
     /**
-     * 指定されたIDのユーザー情報を更新する。
+     * ログイン本人のユーザー情報を更新する。
      *
-     * @param id ユーザーID
      * @param request 更新するユーザー情報
      * @return 更新後のユーザー情報
      */
-    @PutMapping("/{id}")
+    @PutMapping
     public UserResponse update(
-            @PathVariable Long id,
             @Valid @RequestBody UserUpdateRequest request) {
 
         return UserApiMapper.toResponse(userService.update(
-                id,
+                CurrentUser.id(),
                 request.getName(),
                 request.getGender(),
                 request.getAge(),

@@ -15,7 +15,7 @@ import overload_api.service.ExerciseService;
 /**
  * ExerciseControllerの単体テストを行うクラス。
  */
-class ExerciseControllerTest {
+class ExerciseControllerTest extends overload_api.support.ControllerIdentityTest {
 
     /**
      * 種目が存在する場合に、

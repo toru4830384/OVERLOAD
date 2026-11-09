@@ -39,6 +39,9 @@ class WorkoutSetMapperTest extends MySqlIntegrationTest {
      */
     @BeforeEach
     void setUp() {
+        jdbcTemplate.update("DELETE FROM SPRING_SESSION_ATTRIBUTES");
+        jdbcTemplate.update("DELETE FROM SPRING_SESSION");
+        jdbcTemplate.update("DELETE FROM user_credentials");
         jdbcTemplate.update("DELETE FROM workout_sets");
         jdbcTemplate.update("DELETE FROM workout_sessions");
         jdbcTemplate.update("DELETE FROM exercise_muscles");
@@ -83,7 +86,7 @@ class WorkoutSetMapperTest extends MySqlIntegrationTest {
                 10,
                 "Mapperテスト");
 
-        List<WorkoutSet> result = workoutSetMapper.findAll();
+        List<WorkoutSet> result = workoutSetMapper.findByUserId(userId);
 
         assertNotNull(result);
         assertEquals(1, result.size());

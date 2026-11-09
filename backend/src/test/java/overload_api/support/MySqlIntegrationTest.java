@@ -5,8 +5,8 @@ import java.sql.SQLException;
 import java.util.UUID;
 
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.jdbc.datasource.init.ScriptUtils;
+import org.flywaydb.core.Flyway;
+
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -29,6 +29,8 @@ public abstract class MySqlIntegrationTest {
         registry.add("spring.datasource.url", () -> Database.URL);
         registry.add("spring.datasource.username", () -> Database.USER);
         registry.add("spring.datasource.password", () -> Database.PASSWORD);
+        registry.add("spring.flyway.user", () -> Database.USER);
+        registry.add("spring.flyway.password", () -> Database.PASSWORD);
     }
 
     /** テストJVMの間だけ存在するスキーマ。 */
@@ -53,8 +55,7 @@ public abstract class MySqlIntegrationTest {
                 statement.executeUpdate("CREATE DATABASE `" + NAME
                         + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
                 Runtime.getRuntime().addShutdownHook(new Thread(Database::drop));
-                connection.setCatalog(NAME);
-                ScriptUtils.executeSqlScript(connection, new ClassPathResource("schema-test.sql"));
+                Flyway.configure().dataSource(SERVER + NAME, USER, PASSWORD).load().migrate();
                 return SERVER + NAME;
             } catch (SQLException e) {
                 throw new IllegalStateException("Cannot initialize isolated MySQL test schema", e);

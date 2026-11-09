@@ -1,6 +1,7 @@
 package overload_api.controller.dto;
 
 import java.util.List;
+import overload_api.domain.validation.WorkoutSets;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
@@ -28,10 +29,10 @@ public class WorkoutExerciseRequest {
     /**
      * 種目に対して実施したセットの一覧。
      *
-     * {@code @NotEmpty} により、セット一覧自体がnullまたは空にならないことを検証する。
+     * {@code @WorkoutSets} により、セット一覧自体がnullまたは空にならないことを検証する。
      * {@code @Valid} により、セット一覧内の各セットの入力値を検証する。
      */
-    @NotEmpty
+    @WorkoutSets
     @Valid
     private List<@NotNull WorkoutSetRequest> sets;
 

@@ -25,11 +25,12 @@ public class WorkoutSetService {
     }
 
     /**
-     * 全てのワークアウトセットを取得する。
+     * 指定ユーザーのワークアウトセットを取得する。
      *
+     * @param userId 認証済み所有者ID
      * @return ワークアウトセット一覧
      */
-    public List<WorkoutSet> findAll() {
-        return workoutSetMapper.findAll();
+    public List<WorkoutSet> findByUserId(Long userId) {
+        return workoutSetMapper.findByUserId(userId);
     }
 }

@@ -1,0 +1,64 @@
+# カード登録なしの公開：Render FreeとTiDB Cloud Starter
+
+この構成は小規模な公開向け。Renderの無料サーバーは無通信15分で休止する。TiDBは無料Starter・MySQL互換・月額支出上限0ドルを使う。有料プランへの変更やカード登録は前提としない。
+
+## 公開用ビルド
+
+ReactをSpring BootのJARへ同梱し、画面とAPIを同じHTTPSオリジンから配信する。CORSの追加許可やクロスサイトCookieへの切替は不要。
+
+```sh
+npm ci
+npm test
+npm run lint
+npm run build
+cd backend
+./gradlew clean test bootJar -PfrontendDist="$PWD/../dist"
+```
+
+`frontendDist`を指定しないAPI単体ビルドも従来どおり可能。公開時は指定を必須とし、JAR内の `BOOT-INF/classes/static/index.html` とそのアセットが同じビルドに入っていることを確認する。実行中JARの上書きを避けるため、ローカルでは `tools/run-backend.py` を使う。
+
+DockerfileはNodeのビルド、Javaのビルド、Java実行環境を分け、実行時は管理者以外のユーザーで起動する。実行するJARはイメージ内で固定し、ビルド先をマウントしない。Renderの本番イメージビルドとLinux上の512MBメモリー制限内での検証は別途必要。手元の検証だけでその合格を主張しない。
+
+## DBの準備と互換性確認
+
+1. 新しい無料インスタンスを使い、既存のMySQLデータは変更しない。
+2. パスワードの生成と保管は所有者本人が行う。パスワードをチャットやGitへ貼り付けない。
+3. SQL Editorなどで、バージョン、`tidb_enable_check_constraint`、`tidb_enable_foreign_key`、`foreign_key_checks`、`sql_mode`を確認する。CHECKは既定で無効の場合があり、制約が無視される構成を採用しない。
+4. 新しい専用スキーマと、移行用ユーザー・実行用ユーザーを分ける。実行用にDDL権限や管理者資格情報を渡さない。
+5. 下記の移行コマンドはWebサーバーを起動せず、FlywayのV1〜V3だけを適用する。環境変数は本人が安全に設定する。既存スキーマに対する自動baselineやcleanは行わない。
+
+```sh
+java -jar backend/build/libs/overload-api-0.0.1-SNAPSHOT.jar --migrate-only
+```
+
+必要な変数は `OVERLOAD_DB_URL`、`OVERLOAD_MIGRATION_USER`、`OVERLOAD_MIGRATION_PASSWORD`。URLにはユーザー・パスワードを埋め込まず、`sslMode=VERIFY_IDENTITY`を必須とする。例えば接続オプションは `?sslMode=VERIFY_IDENTITY&connectTimeout=10000&socketTimeout=15000`。ホスト名・DB名は接続先に合わせる。
+
+現行のV3には、重複マスターを拒否する一時テーブルとCHECKがある。TiDBの実インスタンスで、移行失敗時の原因、制約の有効性、同時要求時の結果を確認する。MySQLでの成功をTiDBでの成功として扱わない。適用済みのSQLをその場で編集してchecksum検証を避けることもしない。
+
+## Renderに設定するもの
+
+`render.yaml`は `plan: free`、`region: singapore`、`autoDeployTrigger: "off"` を明記している。Freeでは事前実行ジョブやSSHを使えないため、移行は前項の専用実行で済ませる。
+
+秘密の環境変数には、実行用ユーザーの `OVERLOAD_DB_URL`、`OVERLOAD_DB_USER`、`OVERLOAD_DB_PASSWORD` を設定する。`SPRING_FLYWAY_ENABLED=false`を維持し、移行用のパスワードはRenderへ置かない。`local`プロファイルを有効にしない。
+
+Render用プロファイルはSecure CookieとDBのTLSホスト名検証を必須にし、`PORT`で待ち受ける。接続プールと処理スレッド、Javaヒープの上限を無料枠向けに制限している。HTTPの `/api/health` は必要な表への接続を確認し、失敗時は秘密を含めず503を返す。
+
+GitHubへ反映する場合は、対象を `codex/publication-auth` の新規ブランチに限定し、mainを上書きしない。接続アプリの権限追加・アカウント操作・公開操作は対象と料金を確認してから行う。
+
+## 公開前の合格条件
+
+- TiDB上で、移行・新規登録・認証・初回保存・再取得・同時保存・同UUIDの重複防止・他ユーザーの非表示・ログアウト失効を確認する。
+- HTTPSの実URLでSecure/HttpOnly/SameSite Cookie、CSRF、CORSを確認する。
+- 無料Starterの自動バックアップは日次・保持1日。長期保管用エクスポートと別の検証DBへの復元・照合方法を決める。
+- 5xx、DB接続失敗、転送量・RU・保存容量、再起動を監視する。ログへ本文、Cookie、トークン、メモ、パスワードを記録しない。
+- パスワード回復、退会・削除、問い合わせ窓口等の長期公開に必要な運用を決める。
+- 別ネットワークの実ブラウザから新規記録の初回保存と再取得まで確認してから、公開完了と報告する。
+
+## 公式資料
+
+- https://render.com/docs/free
+- https://render.com/docs/docker
+- https://render.com/docs/blueprint-spec
+- https://docs.pingcap.com/tidbcloud/select-cluster-tier/
+- https://docs.pingcap.com/tidbcloud/mysql-compatibility/
+- https://docs.pingcap.com/tidbcloud/backup-and-restore-serverless/

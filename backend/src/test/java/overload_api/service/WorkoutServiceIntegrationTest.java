@@ -45,6 +45,9 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
      */
     @BeforeEach
     void setUp() {
+        jdbcTemplate.update("DELETE FROM SPRING_SESSION_ATTRIBUTES");
+        jdbcTemplate.update("DELETE FROM SPRING_SESSION");
+        jdbcTemplate.update("DELETE FROM user_credentials");
         jdbcTemplate.update("DELETE FROM workout_sets");
         jdbcTemplate.update("DELETE FROM workout_sessions");
         jdbcTemplate.update("DELETE FROM exercise_muscles");
@@ -193,19 +196,19 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
     void httpRegistrationAndHistoryPreserveCanonicalCalories() throws Exception {
         var request = validRequest();
         String body = """
-                {"userId":%d,"startedAt":"2026-01-01T10:00:00+09:00",
+                {"startedAt":"2026-01-01T10:00:00+09:00",
                  "finishedAt":"2026-01-01T11:00:00+09:00","bodyWeightKg":70,
                  "clientRequestId":"%s","exercises":[{"exerciseId":%d,"note":"Integration Test",
                   "sets":[{"setNumber":1,"weightKg":50,"reps":10},{"setNumber":2,"weightKg":55,"reps":8}]}]}
-                """.formatted(request.getUserId(), request.getClientRequestId(), request.getExercises().get(0).getExerciseId());
+                """.formatted(request.getClientRequestId(), request.getExercises().get(0).getExerciseId());
         for (int attempt = 0; attempt < 2; attempt++) {
-            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/workouts")
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/workouts").with(identity(request.getUserId()))
                     .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(body))
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated());
         }
         jdbcTemplate.update("UPDATE users SET body_weight_kg = 90 WHERE id = ?", request.getUserId());
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/workouts/history")
-                .param("user_id", request.getUserId().toString()))
+                .with(identity(request.getUserId())))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$[0].totalCalories").value(150.31))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$[0].bodyWeightKg").value(70.0))
@@ -218,12 +221,12 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
     void httpHistoryKeepsRestCaloriesAndStartWeightAfterReload() throws Exception {
         var request = validRequest();
         String body = """
-                {"userId":%d,"startedAt":"2026-01-01T10:00:00+09:00",
+                {"startedAt":"2026-01-01T10:00:00+09:00",
                  "finishedAt":"2026-01-01T11:00:00+09:00","bodyWeightKg":80,
                  "clientRequestId":"%s","exercises":[{"exerciseId":%d,"note":"休憩を含む60分",
                   "sets":[{"setNumber":1,"weightKg":50,"reps":10}]}]}
-                """.formatted(request.getUserId(), request.getClientRequestId(), request.getExercises().get(0).getExerciseId());
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/workouts")
+                """.formatted(request.getClientRequestId(), request.getExercises().get(0).getExerciseId());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/workouts").with(identity(request.getUserId()))
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(body))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated());
         assertEquals(new BigDecimal("170.10"), jdbcTemplate.queryForObject(
@@ -233,7 +236,7 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
         // 初回取得と、プロフィールを変えた後の再取得で同じ確定値を返す。
         for (int read = 0; read < 2; read++) {
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/workouts/history")
-                    .param("user_id", request.getUserId().toString()))
+                    .with(identity(request.getUserId())))
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$[0].totalCalories").value(170.1))
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$[0].bodyWeightKg").value(80.0))
@@ -241,6 +244,16 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$[0].finishedAt").value("2026-01-01T11:00:00+09:00"));
             jdbcTemplate.update("UPDATE users SET body_weight_kg = 90 WHERE id = ?", request.getUserId());
         }
+    }
+
+    private static org.springframework.test.web.servlet.request.RequestPostProcessor identity(Long id) {
+        return request -> {
+            var identity = new overload_api.auth.UserIdentity(id,"fixture_user","fixture_namespace");
+            request.addHeader("X-Overload-Account", identity.accountKey());
+            var auth = org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated(identity,null,java.util.List.of());
+            request = org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication(auth).postProcessRequest(request);
+            return org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf().postProcessRequest(request);
+        };
     }
 
     /** 登録済みのユーザー・種目を使った正常な入力を生成する。 */

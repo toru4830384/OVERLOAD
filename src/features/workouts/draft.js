@@ -49,7 +49,7 @@ function validateRecord(record, userId) {
     if (!validDate(pendingPayload.finishedAt) || Date.parse(pendingPayload.finishedAt) < Date.parse(session.date)) {
       throw new Error("終了日時の下書き情報が不正です。");
     }
-    const expected = workoutPayload(session, pendingPayload.finishedAt, userId);
+    const expected = workoutPayload(session, pendingPayload.finishedAt);
     // JSONのキー順に依存せず、再送する公開項目が実施中の記録と一致するか確認する。
     if (Object.keys(expected).some(key => JSON.stringify(expected[key]) !== JSON.stringify(pendingPayload[key]))) {
       throw new Error("再送する保存内容が下書きと一致しません。");
@@ -213,7 +213,7 @@ export function createWorkoutDraftStore(userId, getStorage = () => globalThis.lo
       let record;
       let revision = memoryRevision;
       try {
-        record = prepare(state.session, state.pendingPayload || workoutPayload(state.session, finishedAt, userId));
+        record = prepare(state.session, state.pendingPayload || workoutPayload(state.session, finishedAt));
         if (!state.pendingPayload) revision = publish(record); // キュー待ち中も追加編集を受け付けない。
       } catch (cause) {
         validationFailure(cause);
@@ -226,6 +226,8 @@ export function createWorkoutDraftStore(userId, getStorage = () => globalThis.lo
         return clone(record.pendingPayload);
       }, true);
     },
+    /** 破棄せずに現在の保存キューを待つ。ログアウト時の確認に使う。 */
+    async flush() { await tail; if (state.hasUnsavedChanges) throw new Error(state.error || "途中保存の完了を確認してください。"); },
     complete() { return remove(false); },
     retry() {
       if (state.errorKind === "conflict" || editingBarriers) return Promise.resolve(false);

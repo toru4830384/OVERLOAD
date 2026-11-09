@@ -1,0 +1,6 @@
+# 開発時だけ明示して使用する。DB資格情報はローカルでも環境変数で渡す。
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false

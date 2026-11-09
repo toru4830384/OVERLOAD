@@ -16,7 +16,7 @@ import overload_api.service.WorkoutService;
 import overload_api.service.dto.WorkoutHistoryResponse;
 
 /** 履歴とセッション一覧の日時表現が同じであることをHTTP境界で確認する。 */
-class WorkoutTimestampContractTest {
+class WorkoutTimestampContractTest extends overload_api.support.ControllerIdentityTest {
 
     @Test
     void historyAndSessionsExposeTheSameOffsetAndNullableFinish() throws Exception {
@@ -29,7 +29,7 @@ class WorkoutTimestampContractTest {
         var history = new WorkoutHistoryResponse();
         history.setSessionId(1L);
         history.setStartedAt(start);
-        when(sessions.findAll()).thenReturn(List.of(session));
+        when(sessions.findByUserId(1L)).thenReturn(List.of(session));
         when(workouts.findHistoryByUserId(1L)).thenReturn(List.of(history));
         var mvc = MockMvcBuilders.standaloneSetup(
                 new WorkoutSessionController(sessions), new WorkoutController(workouts)).build();
@@ -37,7 +37,7 @@ class WorkoutTimestampContractTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].startedAt").value("2026-01-01T10:00:00+09:00"))
                 .andExpect(jsonPath("$[0].finishedAt").value(org.hamcrest.Matchers.nullValue()));
-        mvc.perform(get("/api/workouts/history").param("user_id", "1"))
+        mvc.perform(get("/api/workouts/history"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].startedAt").value("2026-01-01T10:00:00+09:00"));
         session.setFinishedAt(start.plusHours(1));

@@ -101,11 +101,13 @@ test("workout request freezes completion time and preserves retry identifier and
 });
 
 test("API errors expose their message and retries reuse the exact workout payload", async () => {
-  const { saveWorkout } = await import("../src/api/client.js");
+  const { createAccountApi } = await import("../src/api/client.js");
+  const { saveWorkout } = createAccountApi("test:namespace");
   const original = globalThis.fetch;
   const requests = [];
   try {
     globalThis.fetch = async (url, options) => {
+      if (url.endsWith("/auth/csrf")) return { ok: true, json: async () => ({ token: "test-csrf", headerName: "X-CSRF-TOKEN" }) };
       requests.push({ url, body: options.body });
       if (requests.length === 1) return { ok: false, json: async () => ({ detail: "保存できませんでした" }) };
       return { ok: true, json: async () => [{ sessionId: 1 }] };
@@ -171,18 +173,20 @@ test("workout requires loaded, valid and successfully saved profile and freezes 
 });
 
 test("profile read and save errors reach the caller and can retry with valid data", async () => {
-  const { getProfile, saveProfile } = await import("../src/api/client.js");
+  const { createAccountApi } = await import("../src/api/client.js");
+  const { getProfile, saveProfile } = createAccountApi("test:namespace");
   const original = globalThis.fetch;
   const profile = { name: "Test", gender: "male", age: 30, bodyWeightKg: 70 };
   let calls = 0;
   try {
-    globalThis.fetch = async () => {
+    globalThis.fetch = async (url) => {
+      if (url.endsWith("/auth/csrf")) return { ok: true, json: async () => ({ token: "test-csrf", headerName: "X-CSRF-TOKEN" }) };
       if (++calls <= 2) return { ok: false, json: async () => ({ detail: "プロフィール通信に失敗" }) };
       return { ok: true, json: async () => profile };
     };
-    await assert.rejects(() => getProfile(1), /プロフィール通信に失敗/);
-    await assert.rejects(() => saveProfile(1, profile), /プロフィール通信に失敗/);
-    assert.deepEqual(await getProfile(1), profile);
-    assert.deepEqual(await saveProfile(1, profile), profile);
+    await assert.rejects(() => getProfile(), /プロフィール通信に失敗/);
+    await assert.rejects(() => saveProfile(profile), /プロフィール通信に失敗/);
+    assert.deepEqual(await getProfile(), profile);
+    assert.deepEqual(await saveProfile(profile), profile);
   } finally { globalThis.fetch = original; }
 });

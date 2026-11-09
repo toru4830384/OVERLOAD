@@ -9,7 +9,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import overload_api.exception.GlobalExceptionHandler;
 import overload_api.service.WorkoutService;
 /** HTTP入力の重量・メモの保存範囲を検証する。 */
-class ReviewWorkoutValidationTest {
+class ReviewWorkoutValidationTest extends overload_api.support.ControllerIdentityTest {
     @Test
     void workoutRejectsUnstorableWeightAndLongNoteBeforeCallingService() throws Exception {
         var service = mock(WorkoutService.class);
@@ -17,7 +17,7 @@ class ReviewWorkoutValidationTest {
         var mvc = MockMvcBuilders.standaloneSetup(new WorkoutController(service))
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
         String format = """
-            {"userId":1,"startedAt":"2026-01-01T10:00:00+09:00",
+            {"startedAt":"2026-01-01T10:00:00+09:00",
              "finishedAt":"2026-01-01T11:00:00+09:00","bodyWeightKg":70,
              "clientRequestId":"12345678-1234-1234-1234-123456789abc",
              "exercises":[{"exerciseId":1,"note":"%s","sets":[

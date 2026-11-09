@@ -105,7 +105,7 @@ test("drafts are isolated per user and malformed retry payloads remain recoverab
   const storage = memoryStorage();
   const store = createStore(storage, 2);
   await store.setSession(session());
-  assert.equal((await store.freezeForSave("2026-01-01T11:00:00+09:00")).userId, 2);
+  assert.equal(Object.hasOwn(await store.freezeForSave("2026-01-01T11:00:00+09:00"), "userId"), false);
   assert.equal(createStore(storage).getSnapshot().session, null);
   const data = JSON.parse(storage.getItem(workoutDraftKey(2)));
   data.pendingPayload.exercises[0].sets[0].reps = 99;

@@ -23,8 +23,9 @@ import overload_api.service.WorkoutService;
 import overload_api.service.dto.WorkoutRequest;
 
 /** Springの実際のJSON設定で、整数入力が暗黙に切り捨てられないことを確認する。 */
+@org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc(addFilters = false)
 @WebMvcTest(WorkoutController.class)
-class WorkoutIntegerInputContractTest {
+class WorkoutIntegerInputContractTest extends overload_api.support.ControllerIdentityTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -45,7 +46,6 @@ class WorkoutIntegerInputContractTest {
     @Test
     void fractionalIdentifiersAndSetNumbersAreAlsoRejectedBeforeCallingService() throws Exception {
         for (String body : List.of(
-                request("1.9", "1", "1", "10"),
                 request("1", "1.9", "1", "10"),
                 request("1", "1", "1.9", "10"))) {
             mockMvc.perform(post("/api/workouts").contentType(MediaType.APPLICATION_JSON)
@@ -73,11 +73,11 @@ class WorkoutIntegerInputContractTest {
 
     private static String request(String userId, String exerciseId, String setNumber, String reps) {
         return """
-                {"userId":%s,"startedAt":"2026-01-01T10:00:00+09:00",
+                {"startedAt":"2026-01-01T10:00:00+09:00",
                  "finishedAt":"2026-01-01T11:00:00+09:00","bodyWeightKg":70,
                  "clientRequestId":"12345678-1234-1234-1234-123456789abc",
                  "exercises":[{"exerciseId":%s,"note":"test","sets":[
                  {"setNumber":%s,"weightKg":50,"reps":%s}]}]}
-                """.formatted(userId, exerciseId, setNumber, reps);
+                """.formatted(exerciseId, setNumber, reps);
     }
 }

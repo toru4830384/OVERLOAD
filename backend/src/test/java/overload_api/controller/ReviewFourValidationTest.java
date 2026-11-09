@@ -13,7 +13,7 @@ import overload_api.service.UserService;
 import overload_api.service.WorkoutService;
 
 /** レビュー4件の境界値をHTTP入力から検証する。 */
-class ReviewFourValidationTest {
+class ReviewFourValidationTest extends overload_api.support.ControllerIdentityTest {
     @Test
     void profileRejectsMissingWeightAndNameAndAcceptsFiftyCharacters() throws Exception {
         var service = mock(UserService.class);
@@ -24,13 +24,13 @@ class ReviewFourValidationTest {
                 "\"name\":\"" + "a".repeat(51) + "\",\"bodyWeightKg\":70",
                 "\"name\":\"Test\",\"bodyWeightKg\":null",
                 "\"name\":\"Test\"", "\"bodyWeightKg\":70")) {
-            mvc.perform(put("/api/users/1").contentType(MediaType.APPLICATION_JSON)
+            mvc.perform(put("/api/me").contentType(MediaType.APPLICATION_JSON)
                     .content("{\"age\":30,\"gender\":\"male\"," + fields + "}"))
                     .andExpect(status().isBadRequest());
         }
         verifyNoInteractions(service);
         for (String name : List.of("", "a".repeat(50))) {
-            mvc.perform(put("/api/users/1").contentType(MediaType.APPLICATION_JSON)
+            mvc.perform(put("/api/me").contentType(MediaType.APPLICATION_JSON)
                     .content("{\"age\":30,\"gender\":\"male\",\"name\":\"" + name + "\",\"bodyWeightKg\":70}"))
                     .andExpect(status().isOk());
         }
@@ -44,7 +44,7 @@ class ReviewFourValidationTest {
         var mvc = MockMvcBuilders.standaloneSetup(new WorkoutController(service))
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
         String format = """
-            {"userId":1,"startedAt":"2026-01-01T10:00:00+09:00",
+            {"startedAt":"2026-01-01T10:00:00+09:00",
              "finishedAt":"2026-01-01T11:00:00+09:00","bodyWeightKg":70,
              "clientRequestId":"12345678-1234-1234-1234-123456789abc",
              "exercises":[{"exerciseId":1,"note":"%s","sets":[

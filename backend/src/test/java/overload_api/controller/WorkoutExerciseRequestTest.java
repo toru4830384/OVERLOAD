@@ -11,7 +11,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotEmpty;
+import overload_api.domain.validation.WorkoutSets;
 import jakarta.validation.constraints.NotNull;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 /**
  * WorkoutExerciseRequestのバリデーションをテストするクラス。
  */
-class WorkoutExerciseRequestTest {
+class WorkoutExerciseRequestTest extends overload_api.support.ControllerIdentityTest {
 
     /**
      * Bean Validationを実行するためのValidator。
@@ -62,7 +62,7 @@ class WorkoutExerciseRequestTest {
                 violation.getPropertyPath().toString());
 
         assertEquals(
-                NotEmpty.class,
+                WorkoutSets.class,
                 violation.getConstraintDescriptor()
                         .getAnnotation()
                         .annotationType());
@@ -93,7 +93,7 @@ class WorkoutExerciseRequestTest {
                 violation.getPropertyPath().toString());
 
         assertEquals(
-                NotEmpty.class,
+                WorkoutSets.class,
                 violation.getConstraintDescriptor()
                         .getAnnotation()
                         .annotationType());

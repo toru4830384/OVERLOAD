@@ -59,13 +59,13 @@ class WorkoutSetServiceTest {
         set2.setReps(8);
         set2.setNote("2セット目");
 
-        when(workoutSetMapper.findAll())
+        when(workoutSetMapper.findByUserId(1L))
                 .thenReturn(List.of(
                         set1,
                         set2));
 
         List<WorkoutSet> result =
-                workoutSetService.findAll();
+                workoutSetService.findByUserId(1L);
 
         assertNotNull(result);
         assertEquals(2, result.size());
@@ -135,7 +135,7 @@ class WorkoutSetServiceTest {
                 result.get(1).getNote());
 
         verify(workoutSetMapper, times(1))
-                .findAll();
+                .findByUserId(1L);
     }
 
     /**
@@ -150,16 +150,16 @@ class WorkoutSetServiceTest {
         WorkoutSetService workoutSetService =
                 new WorkoutSetService(workoutSetMapper);
 
-        when(workoutSetMapper.findAll())
+        when(workoutSetMapper.findByUserId(1L))
                 .thenReturn(List.of());
 
         List<WorkoutSet> result =
-                workoutSetService.findAll();
+                workoutSetService.findByUserId(1L);
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
 
         verify(workoutSetMapper, times(1))
-                .findAll();
+                .findByUserId(1L);
     }
 }

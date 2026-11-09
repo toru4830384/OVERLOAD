@@ -1,6 +1,7 @@
 package overload_api.service.dto;
 
 import java.util.List;
+import overload_api.domain.validation.WorkoutSets;
 
 /**
  * ワークアウトで実施する種目のService用リクエスト情報を保持するDTO。

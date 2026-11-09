@@ -4,7 +4,8 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotEmpty;
+import overload_api.domain.validation.WorkoutExercises;
+import overload_api.domain.validation.WorkoutSets;
 import jakarta.validation.constraints.NotNull;
 import overload_api.domain.validation.BodyWeight;
 import overload_api.domain.validation.CommandValidation;
@@ -26,7 +27,7 @@ public record WorkoutCommand(
         @NotNull OffsetDateTime finishedAt,
         @BodyWeight BigDecimal bodyWeightKg,
         @WorkoutRequestIdentifier String clientRequestId,
-        @NotEmpty List<@NotNull @Valid Exercise> exercises) {
+        @WorkoutExercises List<@NotNull @Valid Exercise> exercises) {
 
     /** 保存条件と日時の順序を検証する。 */
     public WorkoutCommand(Long userId, OffsetDateTime startedAt, OffsetDateTime finishedAt,
@@ -63,7 +64,7 @@ public record WorkoutCommand(
 
     /** 種目・メモ・セットの変更不能な値。 */
     public record Exercise(@NotNull Long exerciseId, @WorkoutNote String note,
-            @NotEmpty List<@NotNull @Valid Set> sets) {
+            @WorkoutSets List<@NotNull @Valid Set> sets) {
         /** 種目情報をコピーし、メモ長・セット一覧を検証する。 */
         public Exercise(Long exerciseId, String note, List<Set> sets) {
             this.exerciseId = exerciseId;

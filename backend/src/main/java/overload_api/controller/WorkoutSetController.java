@@ -1,6 +1,7 @@
 package overload_api.controller;
 
 import java.util.List;
+import overload_api.auth.CurrentUser;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,13 +30,13 @@ public class WorkoutSetController {
     }
 
     /**
-     * 全てのワークアウトセットを取得する。
+     * ログイン本人のワークアウトセットを取得する。
      *
      * @return ワークアウトセット一覧
      */
     @GetMapping
     public List<WorkoutSetResponse> findAll() {
-        return workoutSetService.findAll()
+        return workoutSetService.findByUserId(CurrentUser.id())
                 .stream()
                 .map(WorkoutApiMapper::toResponse)
                 .toList();

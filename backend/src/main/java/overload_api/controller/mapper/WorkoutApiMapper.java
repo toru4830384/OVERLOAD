@@ -27,16 +27,17 @@ public final class WorkoutApiMapper {
      * Controller用のワークアウト登録リクエストをService用DTOに変換する。
      *
      * @param request Controller用のワークアウト登録リクエスト
+     * @param authenticatedUserId 認証情報から取得した所有者ID
      * @return Service用のワークアウト登録リクエスト
      */
     public static overload_api.service.dto.WorkoutRequest toServiceRequest(
-            WorkoutRequest request) {
+            WorkoutRequest request, Long authenticatedUserId) {
 
         Objects.requireNonNull(request, "Workout request is required");
         overload_api.service.dto.WorkoutRequest serviceRequest =
                 new overload_api.service.dto.WorkoutRequest();
 
-        serviceRequest.setUserId(request.getUserId());
+        serviceRequest.setUserId(Objects.requireNonNull(authenticatedUserId, "Authenticated user is required"));
         serviceRequest.setStartedAt(request.getStartedAt());
         serviceRequest.setFinishedAt(request.getFinishedAt());
         serviceRequest.setBodyWeightKg(request.getBodyWeightKg());

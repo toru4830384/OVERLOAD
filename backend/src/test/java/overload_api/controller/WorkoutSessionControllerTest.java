@@ -20,7 +20,7 @@ import overload_api.controller.dto.WorkoutSessionResponse;
 /**
  * WorkoutSessionControllerの単体テストを行うクラス。
  */
-class WorkoutSessionControllerTest {
+class WorkoutSessionControllerTest extends overload_api.support.ControllerIdentityTest {
 
     /**
      * セッションが存在する場合に、
@@ -49,7 +49,7 @@ class WorkoutSessionControllerTest {
         session2.setFinishedAt(
                 LocalDateTime.of(2026, 9, 29, 13, 0));
 
-        when(workoutSessionService.findAll())
+        when(workoutSessionService.findByUserId(1L))
                 .thenReturn(List.of(
                         session1,
                         session2));
@@ -90,7 +90,7 @@ class WorkoutSessionControllerTest {
                 result.get(1).getFinishedAt());
 
         verify(workoutSessionService, times(1))
-                .findAll();
+                .findByUserId(1L);
     }
 
     /**
@@ -102,7 +102,7 @@ class WorkoutSessionControllerTest {
         WorkoutSessionService workoutSessionService =
                 mock(WorkoutSessionService.class);
 
-        when(workoutSessionService.findAll())
+        when(workoutSessionService.findByUserId(1L))
                 .thenReturn(List.of());
 
         WorkoutSessionController workoutSessionController =
@@ -115,6 +115,6 @@ class WorkoutSessionControllerTest {
         assertTrue(result.isEmpty());
 
         verify(workoutSessionService, times(1))
-                .findAll();
+                .findByUserId(1L);
     }
 }

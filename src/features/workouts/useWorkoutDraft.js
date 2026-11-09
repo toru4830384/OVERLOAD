@@ -19,6 +19,6 @@ export function useWorkoutDraft(userId) {
     return () => window.removeEventListener("beforeunload", beforeUnload);
   }, [store]);
   return { ...state, getSnapshot: store.getSnapshot, setSession: store.setSession, freezeForSave: store.freezeForSave,
-    complete: store.complete, retry: store.retry, discard: store.discard, reload: store.reload,
+    flush: store.flush, complete: store.complete, retry: store.retry, discard: store.discard, reload: store.reload,
     resumeAfterRejection: store.resumeAfterRejection };
 }

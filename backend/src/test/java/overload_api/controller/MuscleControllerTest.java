@@ -16,7 +16,7 @@ import overload_api.service.MuscleService;
 /**
  * MuscleControllerの単体テストを行うクラス。
  */
-class MuscleControllerTest {
+class MuscleControllerTest extends overload_api.support.ControllerIdentityTest {
 
     /**
      * 部位が存在する場合に、

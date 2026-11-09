@@ -30,7 +30,7 @@ export default function ProfileScreen({
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 12, color: COLORS.steel, marginBottom: 6 }}>名前</div>
                 <input
-                  type="text" maxLength="50" placeholder="未設定" value={userName}
+                  aria-label="表示名" type="text" maxLength="50" placeholder="未設定" value={userName}
                   onChange={(e) => setUserName(e.target.value)}
                   style={{ width: "100%", background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: 10, color: COLORS.chalk, fontSize: 14 }}
                 />
@@ -54,7 +54,7 @@ export default function ProfileScreen({
                 <div style={{ fontSize: 12, color: COLORS.steel, marginBottom: 6 }}>年齢（必須・0歳以上）</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <input
-                    type="number" inputMode="numeric" min="0" max="2147483647" step="1" required placeholder="年齢を入力（必須）" value={age}
+                    aria-label="年齢" type="number" inputMode="numeric" min="0" max="2147483647" step="1" required placeholder="年齢を入力（必須）" value={age}
                     onChange={(e) => setAge(e.target.value)}
                     style={{ flex: 1, background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: 10, color: COLORS.chalk, fontSize: 14 }}
                   />
@@ -67,7 +67,7 @@ export default function ProfileScreen({
                 <div style={{ fontSize: 12, color: COLORS.steel, marginBottom: 6 }}>体重(消費カロリー計算用)</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <input
-                    type="number" inputMode="decimal" min="0.01" max="999.99" step="0.01" required value={bodyWeightKg}
+                    aria-label="体重（kg）" type="number" inputMode="decimal" min="0.01" max="999.99" step="0.01" required value={bodyWeightKg}
                     onChange={(e) => setBodyWeightKg(e.target.value)}
                     style={{ flex: 1, background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: 10, color: COLORS.chalk, fontSize: 14 }}
                   />

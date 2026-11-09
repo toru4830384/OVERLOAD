@@ -6,7 +6,7 @@ import WorkoutDraftNotice from "./components/WorkoutDraftNotice.jsx";
 import { workoutStartError } from "./features/workouts/start.js";
 import { useState, useMemo, useRef } from "react";
 import { useProfile } from "./features/profile/useProfile.js";
-import { ApiError, saveWorkout } from "./api/client.js";
+import { ApiError } from "./api/client.js";
 import { summarizeCalories } from "./features/workouts/history.js";
 import { useWorkoutDraft } from "./features/workouts/useWorkoutDraft.js";
 import { getExerciseDetail } from "./features/exercises/exerciseDetails.js";
@@ -47,19 +47,21 @@ function notifyRestFinished() {
   vibrate();
 }
 
-export default function Overload() {
-  const profileState = useProfile(1);
+export default function Overload({ user, api, onLogout }) {
+  const profileState = useProfile(api);
   const { name: userName, gender, age, bodyWeightKg } = profileState.profile;
   const setUserName = value => profileState.update("name", value);
   const setGender = value => profileState.update("gender", value);
   const setAge = value => profileState.update("age", value);
   const setBodyWeightKg = value => profileState.update("bodyWeightKg", value);
-  const data = useWorkoutData(1);
+  const data = useWorkoutData(api);
   const { exercises, sessions, loadHistory, ready: dataReady, error: dataError } = data;
+  const [logoutError, setLogoutError] = useState("");
+  const [loggingOut, setLoggingOut] = useState(false);
   const [workoutError, setWorkoutError] = useState("");
   const [isSavingWorkout, setIsSavingWorkout] = useState(false);
   const savingWorkout = useRef(false);
-  const draft = useWorkoutDraft(1);
+  const draft = useWorkoutDraft(user.accountKey);
   const activeSession = draft.session;
   const setActiveSession = draft.setSession;
   const [saveConflict, setSaveConflict] = useState(false);
@@ -116,6 +118,20 @@ export default function Overload() {
     const current = draft.getSnapshot();
     return savingWorkout.current || Boolean(current.pendingPayload) || saveConflict
       || ["load", "clear", "conflict"].includes(current.errorKind);
+  }
+
+  async function logout() {
+    if (loggingOut || savingWorkout.current) return;
+    // キュー内の途中保存を待ってから閉じる。失敗時は画面の入力をそのまま保持する。
+    setLoggingOut(true); setLogoutError("");
+    try {
+      await draft.flush();
+      if (draft.getSnapshot().hasUnsavedChanges || (profileState.hasUnsavedChanges || profileState.saveState === "pending")) {
+        throw new Error("未保存の入力があります。保存を確認してからログアウトしてください。");
+      }
+      await onLogout();
+    } catch (error) { setLogoutError(error.message); }
+    finally { setLoggingOut(false); }
   }
 
   function startWorkout() {
@@ -199,7 +215,7 @@ export default function Overload() {
         await draft.complete();
         return;
       }
-      const result = await saveWorkout(payload);
+      const result = await api.saveWorkout(payload);
       accepted = true;
       setSaveConflict(false);
       // 保存後はサーバーが確定した計算値を表示し、再読込時と一致させる。
@@ -259,6 +275,11 @@ export default function Overload() {
         @keyframes restMsgPop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); } 10% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 85% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.95); } }
       `}</style>
 
+      <div style={{ padding: "8px 18px", display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+        <span style={{ fontSize: 12, overflowWrap: "anywhere" }}>{user.loginId}</span>
+        <button type="button" disabled={loggingOut || isSavingWorkout} onClick={logout} style={{ color: COLORS.chalk, background: "none", border: `1px solid ${COLORS.line}`, borderRadius: 6, padding: "8px 10px" }}>{loggingOut ? "確認中…" : "ログアウト"}</button>
+      </div>
+      {logoutError && <p role="alert" style={{ padding: "0 18px", color: "#ffa5a0", fontSize: 13 }}>{logoutError}</p>}
       {/* rest timer complete flash + next-set message */}
       {rest.justFinished && (
         <>
