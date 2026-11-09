@@ -10,7 +10,11 @@ test("registration enforces shared profile boundaries without inventing default 
   const valid = { loginId: "user_1", password: "long-enough-password", name: "", gender: "male", age: "0", bodyWeightKg: "0.01" };
   assert.equal(registrationError(valid), "");
   for (const loginId of ["Aaa", "aa", "has space", "x".repeat(33)]) assert.ok(credentialsError({ ...valid, loginId }));
-  for (const password of ["x".repeat(14), "x".repeat(129), null]) assert.ok(credentialsError({ ...valid, password }));
+  for (const password of ["x".repeat(11), "x".repeat(129), null]) assert.ok(credentialsError({ ...valid, password }));
+  for (const password of ["x".repeat(12), "朝から筋トレを続けるぞ！", "x".repeat(15), "x".repeat(128)]) {
+    assert.equal(credentialsError({ ...valid, password }), "");
+    assert.equal(registrationError({ ...valid, password }), "");
+  }
   for (const patch of [{ age: "" }, { age: "1.5" }, { gender: "" }, { bodyWeightKg: "" }, { bodyWeightKg: "1000" }, { name: "a".repeat(51) }]) assert.ok(registrationError({ ...valid, ...patch }));
   assert.equal(registrationPayload(valid).bodyWeightKg, 0.01);
   assert.equal(registrationPayload(valid).age, 0);

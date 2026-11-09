@@ -69,6 +69,23 @@ class SecurityIntegrationTest extends MySqlIntegrationTest {
     private String workout(String uuid) {
         return "{\"startedAt\":\"2026-01-01T10:00:00+09:00\",\"finishedAt\":\"2026-01-01T11:00:00+09:00\",\"bodyWeightKg\":80,\"clientRequestId\":\""+uuid+"\",\"exercises\":[{\"exerciseId\":"+exercise+",\"sets\":[{\"setNumber\":1,\"weightKg\":50,\"reps\":10}]}]}";
     }
+    @Test void twelveCharacterPasswordRegistersAndLogsInButElevenIsRejected() throws Exception {
+        var browser = new Browser();
+        String id = "boundary_" + sequence.incrementAndGet();
+        assertEquals(400, browser.write("/api/auth/register", registration(id).replace(PASSWORD,
+                "x".repeat(11))).getResponse().getStatus());
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM user_credentials", Integer.class));
+        String password = "朝から筋トレを続けるぞ！";
+        assertEquals(12, password.length());
+        assertEquals(201, browser.write("/api/auth/register", registration(id).replace(PASSWORD,
+                password)).getResponse().getStatus());
+        assertEquals(400, browser.write("/api/auth/login", "{\"loginId\":\"" + id
+                + "\",\"password\":\"" + "x".repeat(11) + "\"}").getResponse().getStatus());
+        assertEquals(200, browser.write("/api/auth/login", "{\"loginId\":\"" + id
+                + "\",\"password\":\"" + password + "\"}").getResponse().getStatus());
+        assertEquals(id, JSON.readTree(browser.read("/api/auth/me").getResponse()
+                .getContentAsString()).get("loginId").asText());
+    }
     @Test void anonymousRequestsCannotReadOrWritePersonalData() throws Exception {
         var browser=new Browser();
         for(String path:List.of("/api/auth/me","/api/me","/api/workouts/history","/api/workout-sessions","/api/workout-sets"))

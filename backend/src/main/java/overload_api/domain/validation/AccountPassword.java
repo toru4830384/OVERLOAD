@@ -10,9 +10,9 @@ import jakarta.validation.constraints.Size;
 @Retention(RetentionPolicy.RUNTIME)
 @Constraint(validatedBy = {})
 @ReportAsSingleViolation
-@NotNull @Size(min = 15, max = 128, message = "パスワードは15〜128文字で入力してください")
+@NotNull @Size(min = 12, max = 128, message = "パスワードは12〜128文字で入力してください")
 public @interface AccountPassword {
-    String message() default "パスワードは15〜128文字で入力してください";
+    String message() default "パスワードは12〜128文字で入力してください";
     Class<?>[] groups() default {};
     Class<? extends Payload>[] payload() default {};
 }

@@ -35,10 +35,17 @@ export default function AuthScreen({ onAuthenticated, notice = "" }) {
       {notice && <p role="status" className="auth-notice">{notice}</p>}
       <form onSubmit={submit}>
         <fieldset disabled={busy}>
-          <label>ログインID<input name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} required minLength={3} maxLength={32} pattern="[a-z0-9_]{3,32}" value={input.loginId} onChange={e => update("loginId", e.target.value)} /></label>
-          <p className="auth-help">小文字の英数字と「_」、3〜32文字</p>
-          <label>パスワード<input name="password" type="password" autoComplete={register ? "new-password" : "current-password"} required minLength={15} maxLength={128} value={input.password} onChange={e => update("password", e.target.value)} /></label>
-          <p className="auth-help">15〜128文字。長いフレーズやパスワード管理アプリが使えます。</p>
+          <label>ログインID<input name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} aria-describedby="login-id-help" required minLength={3} maxLength={32} pattern="[a-z0-9_]{3,32}" value={input.loginId} onChange={e => update("loginId", e.target.value)} /></label>
+          <p id="login-id-help" className="auth-help">
+            {register ? "好きなIDを決めてください。" : "登録時に決めたIDを入力してください。"}<br />
+            例：taro_123（3〜32文字。半角の小文字 a〜z、数字 0〜9、アンダーバー「_」が使えます）
+          </p>
+          <label>パスワード<input name="password" type="password" autoComplete={register ? "new-password" : "current-password"} aria-describedby="password-help" required minLength={12} maxLength={128} value={input.password} onChange={e => update("password", e.target.value)} /></label>
+          <p id="password-help" className="auth-help">
+            {register ? "12〜128文字で、ご自身だけが分かるものを決めてください。" : "登録時に決めたパスワードを入力してください（12〜128文字）。"}<br />
+            長い文章も使えます。例：朝から筋トレを続けるぞ！<br />
+            この例をそのままパスワードに使わないでください。
+          </p>
           {register && <>
             <label>表示名<input name="displayName" autoComplete="nickname" maxLength={50} value={input.name} onChange={e => update("name", e.target.value)} /></label>
             <label>性別<select required value={input.gender} onChange={e => update("gender", e.target.value)}><option value="">選択してください</option><option value="male">男性</option><option value="female">女性</option></select></label>
