@@ -22,6 +22,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-session-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-flyway'
     implementation 'org.flywaydb:flyway-mysql'
+    // TiDBをMySQLと区別し、baselineで未対応のCREATE TABLE AS SELECTを発行しない。
+    implementation 'org.flywaydb:flyway-database-tidb:10.26.2'
     implementation 'org.bouncycastle:bcprov-jdk18on:1.86'
     testImplementation 'org.springframework.security:spring-security-test'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'

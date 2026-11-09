@@ -40,6 +40,10 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    /** 実際のINSERT後、同じトランザクション内のDB行を確認するための監視。 */
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+    private overload_api.mapper.WorkoutSetMapper workoutSetMapper;
+
     /**
      * 各テスト実行前にテスト用データベースを初期化する。
      */
@@ -78,37 +82,38 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
         assertTrue(result.stream().allMatch(set -> set.getId() != null));
     }
 
-    /** 1セット目の実INSERTを確認したDBトリガーで2セット目を失敗させる。 */
+    /** 1セット目の実INSERTを確認し、2セット目のDB制約違反で全登録をロールバックする。 */
     @Test
     void createRollsBackSessionAndSetsWhenSecondSetInsertFails() {
         var request = validRequest();
-        jdbcTemplate.execute("""
-                CREATE TRIGGER fail_second_workout_set BEFORE INSERT ON workout_sets
-                FOR EACH ROW
-                BEGIN
-                    IF NEW.set_number = 2 THEN
-                        IF EXISTS (SELECT 1 FROM workout_sets
-                                   WHERE session_id = NEW.session_id AND set_number = 1) THEN
-                            SIGNAL SQLSTATE '45000'
-                                SET MESSAGE_TEXT = 'review_second_insert_after_first_success';
-                        ELSE
-                            SIGNAL SQLSTATE '45000'
-                                SET MESSAGE_TEXT = 'review_first_insert_missing';
-                        END IF;
-                    END IF;
-                END
-                """);
+        // TiDBにも存在するCHECK制約を使い、トリガー未対応を試験の省略で回避しない。
+        jdbcTemplate.execute("ALTER TABLE workout_sets ADD CONSTRAINT review_reject_second_set CHECK (set_number <> 2)");
+        var firstInserted = new java.util.concurrent.atomic.AtomicBoolean();
+        // MyBatisのMapperはJDKプロキシなので、抽象メソッドではなく元の委譲先を呼ぶ。
+        var realInsert = org.mockito.Mockito.mockingDetails(workoutSetMapper)
+            .getMockCreationSettings().getDefaultAnswer();
+        org.mockito.Mockito.doAnswer(invocation -> {
+            realInsert.answer(invocation);
+            overload_api.model.WorkoutSet row = invocation.getArgument(0);
+            if (row.getSetNumber() == 1) {
+                assertEquals(1, jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM workout_sets WHERE id = ? AND set_number = 1", Integer.class, row.getId()));
+                firstInserted.set(true);
+            }
+            return null;
+        }).when(workoutSetMapper).insert(org.mockito.ArgumentMatchers.any());
         try {
             DataAccessException exception = assertThrows(
                     DataAccessException.class, () -> workoutService.create(request));
-            assertTrue(exception.getMostSpecificCause().getMessage()
-                    .contains("review_second_insert_after_first_success"));
+            assertTrue(firstInserted.get(), "DBで1セット目のINSERT成功を確認してから失敗すること");
+            assertTrue(exception.getMostSpecificCause().getMessage().contains("review_reject_second_set"));
             assertEquals(0, jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM workout_sessions", Integer.class));
             assertEquals(0, jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM workout_sets", Integer.class));
         } finally {
-            jdbcTemplate.execute("DROP TRIGGER IF EXISTS fail_second_workout_set");
+            org.mockito.Mockito.reset(workoutSetMapper);
+            jdbcTemplate.execute("ALTER TABLE workout_sets DROP CHECK review_reject_second_set");
         }
         workoutService.create(request);
         assertEquals(1, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM workout_sessions", Integer.class));
