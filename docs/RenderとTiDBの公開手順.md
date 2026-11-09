@@ -35,7 +35,23 @@ java -jar backend/build/libs/overload-api-0.0.1-SNAPSHOT.jar --migrate-only
 
 現行のV3には、重複マスターを拒否する一時テーブルとCHECKがある。TiDBの実インスタンスで、移行失敗時の原因、制約の有効性、同時要求時の結果を確認する。MySQLでの成功をTiDBでの成功として扱わない。適用済みのSQLをその場で編集してchecksum検証を避けることもしない。
 
+FlywayにはMySQLモジュールに加え、TiDB用のCommunityモジュールを同梱する。MySQL用だけでは、既存DBの明示的baselineでTiDB未対応の`CREATE TABLE ... AS SELECT`を発行する。TiDBモジュール10.26.2はFlyway本体11系を参照する別バージョン体系で、本体はSpring Bootの管理する11.14.1を維持する。TiDBのバージョン文字列から正しいDB種別を選ぶ回帰テストと、実DBで既存記録を保持する試験を行う。
+
+ロールバック試験は、TiDB未対応のトリガーへ依存しない。検証スキーマだけに一時的なCHECK制約を加え、1セット目が実DBへINSERTされたことを同じトランザクションで確認してから、2セット目の制約違反で全登録が取り消されることを確認する。試験後は追加制約を外す。
+
 所有者が保管した接続パスワードで実DBを検証する場合は、`tools/run-cloud-tests.py` をターミナルから実行できる。`--host`、`--user`、`--output-dir`を指定する。パスワードは非表示の対話入力とし、引数・URL・保存ファイルへ含めない。開始前に、この実行で新規作成するUUID付きの使い捨てスキーマだけを終了時に削除することを明示し、所有者の入力を待つ。遠隔接続ではTLSホスト名検証を必須とし、CHECK・外部キーが無効ならスキーマ作成前に停止する。
+
+## 公開用DBと実行ユーザーの新規準備
+
+`tools/prepare-cloud-db.py`は、同名のDBとユーザーがまだ存在しないことを確認してから準備する。MySQL公式クライアントと完成した公開用JARを使い、所有者の非表示入力で接続する。ホスト・ポート・所有者ユーザー・実行ユーザー・DB名・秘密を含まない結果の出力先を指定する。操作対象と権限は事前に所有者へ提示して承認を得る。
+
+- 公開用スキーマを新規作成し、固定コピーのJARでFlywayを実行する。既存DBへの自動baselineやcleanは行わない。
+- 所有者が新しい実行用パスワードを二度入力する。20文字以上の半角英数字・記号とし、管理者用と同じ値は受け付けない。所有者本人が保管する。
+- 新規の実行ユーザーへ、ユーザー・認証情報・筋トレ・セッションの必要な読み書き権限と、3つのマスター表の読取権限だけを付与する。DDL・管理者権限・GRANT OPTIONは与えない。
+- 作成後、その実行ユーザーで9表へ接続し、権限を確認する。Renderへ設定するURLとユーザー名だけを結果ファイルへ出力し、パスワードは出力・保存しない。
+- 途中失敗時は新規DBを保持して停止する。既存の同名DBやユーザーを上書きして再実行しない。残った状態を調査してから対応する。
+
+この準備には`mysql`コマンドが必要。遠隔接続は`VERIFY_IDENTITY`とOSのCA証明書を使う。手元の権限境界試験もTLSで接続し、証明書検証の省略はループバック専用のテストでのみ許す。
 
 ## Renderに設定するもの
 
@@ -64,3 +80,4 @@ GitHubへ反映する場合は、対象を `codex/publication-auth` の新規ブ
 - https://docs.pingcap.com/tidbcloud/select-cluster-tier/
 - https://docs.pingcap.com/tidbcloud/mysql-compatibility/
 - https://docs.pingcap.com/tidbcloud/backup-and-restore-serverless/
+- https://documentation.red-gate.com/fd/tidb-titanium-db-277579334.html
