@@ -8,14 +8,15 @@ COPY public ./public
 COPY src ./src
 RUN npm run build
 
-FROM eclipse-temurin:17-jdk-jammy AS backend
+# 検証済みのGradleを含む公式イメージで、毎回の配布ZIP取得への依存をなくす。
+FROM gradle:9.7.1-jdk17-jammy AS backend
 WORKDIR /source/backend
 COPY backend/gradlew backend/gradlew.bat ./
 COPY backend/gradle ./gradle
 COPY backend/build.gradle backend/settings.gradle ./
 COPY backend/src ./src
 COPY --from=frontend /frontend/dist /source/frontend-dist
-RUN chmod +x gradlew && ./gradlew --no-daemon bootJar -PfrontendDist=/source/frontend-dist
+RUN gradle --no-daemon bootJar -PfrontendDist=/source/frontend-dist
 
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
