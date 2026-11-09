@@ -49,12 +49,13 @@ export default function AuthScreen({ onAuthenticated, notice = "" }) {
             この例をそのままパスワードに使わないでください。
           </p>
           {register && <>
-            <label>表示名<input name="displayName" autoComplete="nickname" maxLength={50} value={input.name} onChange={e => update("name", e.target.value)} /></label>
+            <label>プロフィール名<input name="displayName" autoComplete="nickname" aria-describedby="profile-name-help" maxLength={50} value={input.name} onChange={e => update("name", e.target.value)} /></label>
             <label>性別<select required value={input.gender} onChange={e => update("gender", e.target.value)}><option value="">選択してください</option><option value="male">男性</option><option value="female">女性</option></select></label>
             <div className="auth-columns">
               <label>年齢<input required type="number" min="0" max="2147483647" step="1" value={input.age} onChange={e => update("age", e.target.value)} /></label>
               <label>体重（kg）<input required type="number" min="0.01" max="999.99" step="0.01" value={input.bodyWeightKg} onChange={e => update("bodyWeightKg", e.target.value)} /></label>
             </div>
+            <p id="profile-name-help" className="auth-help">プロフィール名、性別、年齢、体重はログイン後いつでも変更可能です。</p>
             <p className="auth-help">プロフィールとトレーニング記録は本人だけが利用できます。実施中の下書きはこの端末にも保存されます。</p>
           </>}
           {error && <p role="alert" className="auth-error">{error}</p>}

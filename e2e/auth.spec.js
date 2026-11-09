@@ -35,7 +35,7 @@ async function register(page, id, name = '利用者A') {
   await page.getByRole('button', { name: '初めての方はアカウントを作成' }).click();
   await page.getByLabel('ログインID', { exact: true }).fill(id);
   await page.getByLabel('パスワード', { exact: true }).fill(password);
-  await page.getByLabel('表示名', { exact: true }).fill(name);
+  await page.getByLabel('プロフィール名', { exact: true }).fill(name);
   await page.getByLabel('性別', { exact: true }).selectOption('male');
   await page.getByLabel('年齢', { exact: true }).fill('30');
   await page.getByLabel('体重（kg）', { exact: true }).fill('80');
@@ -86,12 +86,12 @@ test('登録・途中保存・再読込・完了・再ログイン・別ユー�
   await page.getByRole('button', { name: '履歴', exact: true }).click();
   await expect(page.getByText('この月の記録はありません', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'プロフィール', exact: true }).click();
-  await expect(page.getByLabel('表示名', { exact: true })).toHaveValue('利用者B');
-  await page.getByLabel('表示名', { exact: true }).fill('Bのプロフィール');
+  await expect(page.getByLabel('プロフィール名', { exact: true })).toHaveValue('利用者B');
+  await page.getByLabel('プロフィール名', { exact: true }).fill('Bのプロフィール');
   await expect(page.getByText('保存済み', { exact: true })).toBeVisible();
   await page.reload();
   await page.getByRole('button', { name: 'プロフィール', exact: true }).click();
-  await expect(page.getByLabel('表示名', { exact: true })).toHaveValue('Bのプロフィール');
+  await expect(page.getByLabel('プロフィール名', { exact: true })).toHaveValue('Bのプロフィール');
   await page.screenshot({ path: testInfo.outputPath('separated-profile.png'), fullPage: true });
 });
 

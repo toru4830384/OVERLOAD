@@ -28,9 +28,9 @@ export default function ProfileScreen({
 
             <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.line}`, borderRadius: 12, padding: 16, marginBottom: 14 }}>
               <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 12, color: COLORS.steel, marginBottom: 6 }}>名前</div>
+                <div style={{ fontSize: 12, color: COLORS.steel, marginBottom: 6 }}>プロフィール名</div>
                 <input
-                  aria-label="表示名" type="text" maxLength="50" placeholder="未設定" value={userName}
+                  aria-label="プロフィール名" type="text" maxLength="50" placeholder="未設定" value={userName}
                   onChange={(e) => setUserName(e.target.value)}
                   style={{ width: "100%", background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: 10, color: COLORS.chalk }}
                 />
