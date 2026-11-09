@@ -2,6 +2,7 @@
 """本人の非表示入力で、新しい公開用DBと権限を限定した実行用ユーザーを準備する。"""
 import argparse
 import datetime
+import functools
 import getpass
 import importlib.util
 import json
@@ -9,8 +10,11 @@ import os
 from pathlib import Path
 import re
 import shutil
+import struct
 import subprocess
 import sys
+import tempfile
+import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
 PRIVILEGES = {
@@ -28,8 +32,38 @@ class PreparationError(Exception):
     """秘密やSQL本文を含めずに、停止した段階を所有者へ通知する。"""
 
 
+@functools.lru_cache(maxsize=1)
+def prepare_sql_client():
+    """検証済みアプリのJDBCドライバーと専用クラスを、上書きしない実行先へ固定する。"""
+    java, javac = shutil.which('java'), shutil.which('javac')
+    if not java or not javac:
+        raise PreparationError('Java 17の実行・コンパイル環境が必要です。')
+    jar = ROOT / 'backend/build/libs/overload-api-0.0.1-SNAPSHOT.jar'
+    try:
+        with zipfile.ZipFile(jar) as archive:
+            drivers = [name for name in archive.namelist()
+                       if name.startswith('BOOT-INF/lib/mysql-connector-j-') and name.endswith('.jar')]
+            if len(drivers) != 1:
+                raise PreparationError('アプリに同梱されたJDBCドライバーを特定できません。')
+            driver = archive.read(drivers[0])
+    except (OSError, zipfile.BadZipFile):
+        raise PreparationError('先に公開用JARのビルドを完了してください。') from None
+    releases = ROOT / '.run'
+    releases.mkdir(parents=True, exist_ok=True)
+    runtime = Path(tempfile.mkdtemp(prefix='db-client-', dir=releases))
+    (runtime / 'mysql-connector.jar').write_bytes(driver)
+    shutil.copyfile(ROOT / 'tools/CloudDbSql.java', runtime / 'CloudDbSql.java')
+    result = subprocess.run([javac, '-encoding', 'UTF-8', '--release', '17', '-d', str(runtime),
+                             str(runtime / 'CloudDbSql.java')], capture_output=True, timeout=45)
+    if result.returncode:
+        raise PreparationError('DB準備用のJavaクラスを作成できませんでした。')
+    for path in runtime.iterdir():
+        path.chmod(0o444)
+    return (java, '--class-path', str(runtime) + os.pathsep + str(runtime / 'mysql-connector.jar'), 'CloudDbSql')
+
+
 class MySqlClient:
-    """秘密を引数や設定ファイルに置かず、検証済みTLSで公式クライアントを使う。"""
+    """秘密を引数や設定ファイルに置かず、アプリと同じJDBCで検証済みTLS接続する。"""
     def __init__(self, host, port, user, password, verify_identity=True):
         if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}', host) or not 1 <= port <= 65535:
             raise PreparationError('接続先が不正です。')
@@ -37,26 +71,27 @@ class MySqlClient:
             raise PreparationError('遠隔接続のTLS検証は無効にできません。')
         self.host, self.port, self.user, self.password = host, port, user, password
         self.verify_identity = verify_identity
-        self.executable = shutil.which('mysql') or '/opt/homebrew/bin/mysql'
-        if not Path(self.executable).is_file():
-            raise PreparationError('MySQLクライアントが見つかりません。')
+        self.command = prepare_sql_client()
 
-    def sql(self, statement):
+    def sql(self, *statements):
         """SQLは標準入力、秘密は子プロセスの環境だけへ渡す。認証設定を保存しない。"""
-        command = [self.executable, '--no-defaults', '--batch', '--raw', '--skip-column-names',
-                   '--host=' + self.host, '--port=' + str(self.port), '--user=' + self.user,
-                   '--connect-timeout=10', '--ssl-mode=' + ('VERIFY_IDENTITY' if self.verify_identity else 'REQUIRED')]
-        if self.verify_identity:
-            command += ['--ssl-ca=/etc/ssl/cert.pem']
-        env = dict(os.environ, MYSQL_PWD=self.password)
-        result = subprocess.run(command, input=statement, text=True, stdout=subprocess.PIPE,
+        url = ('jdbc:mysql://' + self.host + ':' + str(self.port) + '/?sslMode='
+               + ('VERIFY_IDENTITY' if self.verify_identity else 'REQUIRED')
+               + '&connectTimeout=10000&socketTimeout=15000')
+        env = dict(os.environ, OVERLOAD_SQL_URL=url, OVERLOAD_SQL_USER=self.user,
+                   OVERLOAD_SQL_PASSWORD=self.password)
+        payload = struct.pack('>I', len(statements))
+        for statement in statements:
+            encoded = statement.encode('utf-8')
+            payload += struct.pack('>I', len(encoded)) + encoded
+        result = subprocess.run(self.command, input=payload, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, env=env, timeout=60)
         if result.returncode:
             # 構文エラー等にSQLやパスワードが含まれても、エラー番号以外は表示しない。
-            error = re.search(r'ERROR\s+(\d+)', result.stderr)
+            error = re.search(rb'DB_ERROR:(\d+)', result.stderr)
             raise PreparationError('DB操作を完了できませんでした（エラー番号：'
-                                   + (error.group(1) if error else '取得不能') + '）。')
-        return result.stdout.strip()
+                                   + (error.group(1).decode() if error else '取得不能') + '）。')
+        return result.stdout.decode('utf-8').strip()
 
 
 def provision(owner, schema, app_user, app_password, migrate):
@@ -76,8 +111,8 @@ def provision(owner, schema, app_user, app_password, migrate):
     migrate()
     # NO_BACKSLASH_ESCAPESをこの接続だけへ適用し、引用符はSQL標準どおり二重化する。
     literal = app_password.replace("'", "''")
-    owner.sql("SET SESSION sql_mode=CONCAT(@@SESSION.sql_mode,',NO_BACKSLASH_ESCAPES');\n"
-              + "CREATE USER '" + app_user + "'@'%' IDENTIFIED BY '" + literal + "';")
+    owner.sql("SET SESSION sql_mode=CONCAT(@@SESSION.sql_mode,',NO_BACKSLASH_ESCAPES')",
+              "CREATE USER '" + app_user + "'@'%' IDENTIFIED BY '" + literal + "'")
     for table, permissions in PRIVILEGES.items():
         owner.sql('GRANT ' + permissions + ' ON `' + schema + '`.`' + table
                   + "` TO '" + app_user + "'@'%'")
@@ -94,6 +129,11 @@ def main():
     args = parser.parse_args()
     if not sys.stdin.isatty():
         parser.error('所有者本人がターミナルで操作してください。')
+    try:
+        prepare_sql_client()
+    except (PreparationError, OSError, subprocess.SubprocessError) as error:
+        print(str(error) if isinstance(error, PreparationError) else '接続ツールの準備に失敗しました。')
+        return 1
     print('公開用DB：' + args.schema + '\n実行用ユーザー：' + args.app_user)
     print('新しいDBだけを移行し、新しい実行ユーザーへ9表の必要な読み書き権限だけを与えます。')
     print('既存DB・ユーザー・パスワードを上書きせず、有料化や削除も行いません。')
