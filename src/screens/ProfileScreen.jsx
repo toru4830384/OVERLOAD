@@ -32,7 +32,7 @@ export default function ProfileScreen({
                 <input
                   aria-label="表示名" type="text" maxLength="50" placeholder="未設定" value={userName}
                   onChange={(e) => setUserName(e.target.value)}
-                  style={{ width: "100%", background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: 10, color: COLORS.chalk, fontSize: 14 }}
+                  style={{ width: "100%", background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: 10, color: COLORS.chalk }}
                 />
               </div>
 
@@ -56,7 +56,7 @@ export default function ProfileScreen({
                   <input
                     aria-label="年齢" type="number" inputMode="numeric" min="0" max="2147483647" step="1" required placeholder="年齢を入力（必須）" value={age}
                     onChange={(e) => setAge(e.target.value)}
-                    style={{ flex: 1, background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: 10, color: COLORS.chalk, fontSize: 14 }}
+                    style={{ flex: 1, background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: 10, color: COLORS.chalk }}
                   />
                   <span style={{ fontSize: 12, color: COLORS.steelDim }}>歳</span>
                 </div>
@@ -69,7 +69,7 @@ export default function ProfileScreen({
                   <input
                     aria-label="体重（kg）" type="number" inputMode="decimal" min="0.01" max="999.99" step="0.01" required value={bodyWeightKg}
                     onChange={(e) => setBodyWeightKg(e.target.value)}
-                    style={{ flex: 1, background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: 10, color: COLORS.chalk, fontSize: 14 }}
+                    style={{ flex: 1, background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: 10, color: COLORS.chalk }}
                   />
                   <span style={{ fontSize: 12, color: COLORS.steelDim }}>kg</span>
                 </div>

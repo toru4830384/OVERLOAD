@@ -53,7 +53,7 @@ export default function ExercisesScreen({
             <div style={{ position: "relative", marginBottom: 10 }}>
               <input
                 placeholder="種目名で検索" value={exerciseSearch} onChange={(e) => setExerciseSearch(e.target.value)}
-                style={{ width: "100%", background: COLORS.surface, border: `1px solid ${COLORS.line}`, borderRadius: 10, padding: "12px 14px", color: COLORS.chalk, fontSize: 14 }}
+                style={{ width: "100%", background: COLORS.surface, border: `1px solid ${COLORS.line}`, borderRadius: 10, padding: "12px 14px", color: COLORS.chalk }}
               />
               {exerciseSearch && (
                 <button type="button" onClick={() => setExerciseSearch("")} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: COLORS.steelDim }}>
@@ -63,11 +63,11 @@ export default function ExercisesScreen({
             </div>
 
             <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-              <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={{ flex: 1, background: COLORS.surface, border: `1px solid ${COLORS.line}`, borderRadius: 10, padding: "10px 8px", color: COLORS.chalk, fontSize: 13 }}>
+              <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={{ flex: 1, background: COLORS.surface, border: `1px solid ${COLORS.line}`, borderRadius: 10, padding: "10px 8px", color: COLORS.chalk }}>
                 <option value="all">すべての部位</option>
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
-              <select value={filterEquipment} onChange={(e) => setFilterEquipment(e.target.value)} style={{ flex: 1, background: COLORS.surface, border: `1px solid ${COLORS.line}`, borderRadius: 10, padding: "10px 8px", color: COLORS.chalk, fontSize: 13 }}>
+              <select value={filterEquipment} onChange={(e) => setFilterEquipment(e.target.value)} style={{ flex: 1, background: COLORS.surface, border: `1px solid ${COLORS.line}`, borderRadius: 10, padding: "10px 8px", color: COLORS.chalk }}>
                 <option value="all">すべての器具</option>
                 {EQUIPMENT_ORDER.map((eq) => <option key={eq} value={eq}>{EQUIPMENT_LABELS[eq]}</option>)}
               </select>

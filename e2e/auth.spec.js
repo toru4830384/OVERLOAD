@@ -3,6 +3,33 @@ const password = 'browser-only-long-password-4830';
 let sequence = 0;
 const account = () => `e2e_${Date.now()}_${++sequence}`;
 
+// エミュレーションではiPhoneのキーボードによるズーム自体は再現できない。
+// 実際の各画面で、自動ズームの原因になる16px未満の入力文字が戻ることを防ぐ。
+test('ログイン後の全入力欄がスマホ幅でも16px以上で、手動ズームを制限しない', async ({ page }) => {
+  await register(page, account());
+  async function checkFields(count) {
+    await expect(page.locator('input, select, textarea')).toHaveCount(count);
+    for (const width of [320, 390, 430, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      const fields = await page.locator('input, select, textarea').evaluateAll(elements =>
+        elements.map(element => ({
+          name: element.getAttribute('aria-label') || element.getAttribute('placeholder'),
+          size: parseFloat(getComputedStyle(element).fontSize),
+        })));
+      for (const field of fields) expect(field.size, `${width}px: ${field.name}`).toBeGreaterThanOrEqual(16);
+    }
+  }
+  await page.getByRole('button', { name: 'プロフィール', exact: true }).click();
+  await checkFields(3);
+  await page.getByRole('button', { name: '種目', exact: true }).click();
+  await checkFields(3);
+  await page.getByRole('button', { name: 'ワークアウト', exact: true }).click();
+  await addBench(page);
+  await checkFields(4);
+  const viewport = await page.locator('meta[name="viewport"]').getAttribute('content');
+  expect(viewport).not.toMatch(/user-scalable\s*=\s*(no|0)|maximum-scale\s*=/i);
+});
+
 async function register(page, id, name = '利用者A') {
   await page.goto('/');
   await page.getByRole('button', { name: '初めての方はアカウントを作成' }).click();

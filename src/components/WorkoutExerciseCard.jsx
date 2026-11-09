@@ -7,7 +7,7 @@ import { estimateSetCalories } from "../features/workouts/calories.js";
 import { WORKOUT_REPETITIONS_MIN, WORKOUT_REPETITIONS_MAX } from "../features/workouts/validation.js";
 
 const hiddenLabel = { position: "absolute", width: 1, height: 1, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0, 0, 0, 0)", whiteSpace: "nowrap", border: 0 };
-const draftInput = { width: "100%", boxSizing: "border-box", background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: 10, color: COLORS.chalk, fontSize: 14 };
+const draftInput = { width: "100%", boxSizing: "border-box", background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 8, padding: 10, color: COLORS.chalk };
 const iconButton = { background: "none", border: "none", color: COLORS.steelDim };
 
 /** 種目単位の表示と入力。操作対象には並び順が変わらない種目IDを渡す。 */
@@ -35,7 +35,7 @@ export default function WorkoutExerciseCard({ entry, exercise, personalRecord, b
         <span aria-hidden="true" style={{ fontSize: 13, flexShrink: 0, marginTop: 6 }}>📝</span>
         <textarea id={`${id}-note`} rows={4} placeholder="今日のメモ(履歴に残ります)" maxLength={100} value={entry.note || ""}
           onChange={event => updateDraft(exerciseId, "note", event.target.value)}
-          style={{ flex: 1, minWidth: 0, background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 6, padding: "6px 8px", color: COLORS.amber, fontSize: 12, fontFamily: "inherit", resize: "none", lineHeight: 1.5 }} />
+          style={{ flex: 1, minWidth: 0, background: COLORS.bg, border: `1px solid ${COLORS.line}`, borderRadius: 6, padding: "6px 8px", color: COLORS.amber, fontFamily: "inherit", resize: "none", lineHeight: 1.5 }} />
       </div>
 
       {entry.sets.length > 0 && (

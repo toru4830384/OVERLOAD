@@ -59,7 +59,7 @@ export default function WorkoutScreen({
               <input id={restId} type="number" min={REST_SECONDS_MIN} max={REST_SECONDS_MAX} step="1" value={restInput} placeholder="休憩時間を入力"
                 aria-invalid={Boolean(restError)} aria-describedby={restError ? `${restId}-error` : undefined}
                 onChange={event => setRestInput(event.target.value)}
-                style={{ width: 100, height: 30, background: COLORS.surfaceAlt, border: `1px solid ${COLORS.line}`, borderRadius: 6, color: COLORS.chalk, textAlign: "center", fontFamily: "'JetBrains Mono', monospace", fontSize: 13 }} />
+                style={{ width: 100, height: 30, background: COLORS.surfaceAlt, border: `1px solid ${COLORS.line}`, borderRadius: 6, color: COLORS.chalk, textAlign: "center", fontFamily: "'JetBrains Mono', monospace" }} />
               <span style={{ fontSize: 12, color: COLORS.steel }}>秒</span>
             </div>
           </div>
