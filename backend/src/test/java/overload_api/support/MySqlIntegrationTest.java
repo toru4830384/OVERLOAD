@@ -35,35 +35,29 @@ public abstract class MySqlIntegrationTest {
 
     /** テストJVMの間だけ存在するスキーマ。 */
     private static final class Database {
-        private static final String SERVER = System.getenv().getOrDefault(
-                "OVERLOAD_TEST_MYSQL_SERVER", "jdbc:mysql://127.0.0.1:3306/");
-        private static final String USER = System.getenv().getOrDefault(
-                "OVERLOAD_TEST_MYSQL_USER", "root");
-        private static final String PASSWORD = System.getenv().getOrDefault(
-                "OVERLOAD_TEST_MYSQL_PASSWORD", "");
+        private static final IsolatedMySqlServer SERVER = IsolatedMySqlServer.fromEnvironment();
+        private static final String USER = SERVER.user();
+        private static final String PASSWORD = SERVER.password();
         private static final String NAME = "overload_review_"
                 + UUID.randomUUID().toString().replace("-", "");
         private static final String URL = initialize();
 
         private static String initialize() {
-            if (!SERVER.matches("jdbc:mysql://[^/?]+/")) {
-                throw new IllegalArgumentException(
-                        "OVERLOAD_TEST_MYSQL_SERVER must be jdbc:mysql://host:port/");
-            }
-            try (var connection = DriverManager.getConnection(SERVER, USER, PASSWORD);
+            try (var connection = DriverManager.getConnection(SERVER.url(), USER, PASSWORD);
                     var statement = connection.createStatement()) {
+                SERVER.verifyConstraints(connection);
                 statement.executeUpdate("CREATE DATABASE `" + NAME
                         + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
                 Runtime.getRuntime().addShutdownHook(new Thread(Database::drop));
-                Flyway.configure().dataSource(SERVER + NAME, USER, PASSWORD).load().migrate();
-                return SERVER + NAME;
+                Flyway.configure().dataSource(SERVER.databaseUrl(NAME), USER, PASSWORD).load().migrate();
+                return SERVER.databaseUrl(NAME);
             } catch (SQLException e) {
                 throw new IllegalStateException("Cannot initialize isolated MySQL test schema", e);
             }
         }
 
         private static void drop() {
-            try (var connection = DriverManager.getConnection(SERVER, USER, PASSWORD);
+            try (var connection = DriverManager.getConnection(SERVER.url(), USER, PASSWORD);
                     var statement = connection.createStatement()) {
                 statement.executeUpdate("DROP DATABASE IF EXISTS `" + NAME + "`");
             } catch (SQLException e) {

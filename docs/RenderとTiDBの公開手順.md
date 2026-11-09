@@ -35,6 +35,8 @@ java -jar backend/build/libs/overload-api-0.0.1-SNAPSHOT.jar --migrate-only
 
 現行のV3には、重複マスターを拒否する一時テーブルとCHECKがある。TiDBの実インスタンスで、移行失敗時の原因、制約の有効性、同時要求時の結果を確認する。MySQLでの成功をTiDBでの成功として扱わない。適用済みのSQLをその場で編集してchecksum検証を避けることもしない。
 
+所有者が保管した接続パスワードで実DBを検証する場合は、`tools/run-cloud-tests.py` をターミナルから実行できる。`--host`、`--user`、`--output-dir`を指定する。パスワードは非表示の対話入力とし、引数・URL・保存ファイルへ含めない。開始前に、この実行で新規作成するUUID付きの使い捨てスキーマだけを終了時に削除することを明示し、所有者の入力を待つ。遠隔接続ではTLSホスト名検証を必須とし、CHECK・外部キーが無効ならスキーマ作成前に停止する。
+
 ## Renderに設定するもの
 
 `render.yaml`は `plan: free`、`region: singapore`、`autoDeployTrigger: "off"` を明記している。Freeでは事前実行ジョブやSSHを使えないため、移行は前項の専用実行で済ませる。
