@@ -43,7 +43,9 @@ export default function AuthScreen({ onAuthenticated, notice = "" }) {
           <label>パスワード<input name="password" type="password" autoComplete={register ? "new-password" : "current-password"} aria-describedby="password-help" required minLength={12} maxLength={128} value={input.password} onChange={e => update("password", e.target.value)} /></label>
           <p id="password-help" className="auth-help">
             {register ? "12〜128文字で、ご自身だけが分かるものを決めてください。" : "登録時に決めたパスワードを入力してください（12〜128文字）。"}<br />
-            長い文章も使えます。例：朝から筋トレを続けるぞ！<br />
+            英字・数字でも、文章でも作れます。<br />
+            英数字の例：training2026<br />
+            文章の例：朝から筋トレを続けるぞ！<br />
             この例をそのままパスワードに使わないでください。
           </p>
           {register && <>
