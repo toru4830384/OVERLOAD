@@ -20,8 +20,9 @@ public class HealthController {
     @GetMapping("/api/health")
     public ResponseEntity<Map<String,String>> health() {
         try {
-            // 個人の記録を取得せず、移行不足・DB停止・権限不足も検出する。
-            jdbc.queryForObject("SELECT (SELECT COUNT(*) FROM user_credentials WHERE 1=0)"
+            // 行を取得せず、認証世代列とGoogle連携表を含めて移行不足を検出する。
+            jdbc.queryForObject("SELECT (SELECT COUNT(auth_version) FROM user_credentials WHERE 1=0)"
+                + " + (SELECT COUNT(google_subject) FROM google_accounts WHERE 1=0)"
                 + " + (SELECT COUNT(*) FROM workout_sessions WHERE 1=0)"
                 + " + (SELECT COUNT(*) FROM SPRING_SESSION WHERE 1=0)", Integer.class);
             return ResponseEntity.ok(Map.of("status", "up"));

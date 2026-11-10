@@ -39,6 +39,7 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
      */
     @Autowired
     private JdbcTemplate jdbcTemplate;
+    @Autowired private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     /** 実際のINSERT後、同じトランザクション内のDB行を確認するための監視。 */
     @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
@@ -251,9 +252,14 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
         }
     }
 
-    private static org.springframework.test.web.servlet.request.RequestPostProcessor identity(Long id) {
+    private org.springframework.test.web.servlet.request.RequestPostProcessor identity(Long id) {
+        String loginId="fixture_"+id;
+        if (jdbcTemplate.queryForObject("SELECT COUNT(*) FROM user_credentials WHERE user_id=?",Integer.class,id)==0) {
+            jdbcTemplate.update("INSERT INTO user_credentials(user_id,login_id,password_hash,draft_namespace) VALUES(?,?,?,?)",
+                id,loginId,passwordEncoder.encode(java.util.UUID.randomUUID().toString()),"fixture_namespace");
+        }
         return request -> {
-            var identity = new overload_api.auth.UserIdentity(id,"fixture_user","fixture_namespace");
+            var identity = new overload_api.auth.UserIdentity(id,loginId,"fixture_namespace");
             request.addHeader("X-Overload-Account", identity.accountKey());
             var auth = org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated(identity,null,java.util.List.of());
             request = org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication(auth).postProcessRequest(request);

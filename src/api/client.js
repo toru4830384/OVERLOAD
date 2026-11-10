@@ -49,6 +49,10 @@ const json = body => ({ method: "POST", headers: { "Content-Type": "application/
 export const getAuthenticatedUser = signal => request("/auth/me", { signal });
 export const registerAccount = input => request("/auth/register", json(input));
 export const loginAccount = input => request("/auth/login", json(input));
+export const getGoogleConfiguration = () => request("/auth/google/config");
+export const beginGoogleLogin = () => request("/auth/google/challenge", { method: "POST" });
+export const googleLogin = credential => request("/auth/google/login", json({ credential }));
+export const registerGoogleAccount = input => request("/auth/google/register", json(input));
 export const logoutAccount = accountKey => request("/auth/logout", { method: "POST", accountKey });
 
 /** インスタンスに本人キーを固定し、遅い保存キューが次のアカウントへ向かうことを防ぐ。 */
@@ -56,6 +60,10 @@ export function createAccountApi(accountKey, onSessionLost) {
   if (typeof accountKey !== "string" || !accountKey) throw new Error("ログイン情報が必要です。");
   const own = (path, options = {}) => request(path, { ...options, accountKey, onSessionLost });
   return Object.freeze({
+    getSecurityStatus: () => own("/auth/security"),
+    changePassword: input => own("/auth/password", json(input)),
+    beginGoogleLink: input => own("/auth/google/link/challenge", json(input)),
+    linkGoogle: input => own("/auth/google/link", json(input)),
     getExercises: signal => own("/exercises", { signal }),
     getProfile: signal => own("/me", { signal }),
     getWorkoutHistory: signal => own("/workouts/history", { signal }),

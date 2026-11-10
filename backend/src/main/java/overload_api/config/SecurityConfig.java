@@ -31,7 +31,7 @@ public class SecurityConfig {
             new ChangeSessionIdAuthenticationStrategy(), new CsrfAuthenticationStrategy(new HttpSessionCsrfTokenRepository())));
     }
     /** @param http セキュリティ構築設定 @param limit 認証試行上限 @return フィルター構成 */
-    @Bean SecurityFilterChain apiSecurity(HttpSecurity http, @Value("${overload.auth.attempts-per-minute:20}") int limit) throws Exception {
+    @Bean SecurityFilterChain apiSecurity(HttpSecurity http, @Value("${overload.auth.attempts-per-minute:20}") int limit, overload_api.mapper.CredentialMapper credentials) throws Exception {
         return http.cors(org.springframework.security.config.Customizer.withDefaults())
             .csrf(org.springframework.security.config.Customizer.withDefaults())
             .securityContext(c -> c.securityContextRepository(securityContextRepository()))
@@ -39,9 +39,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(a -> a
                 // エラーの応答処理と、公開する画面ファイルだけを認証前に配信する。
                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                .requestMatchers(HttpMethod.GET, "/", "/index.html", "/favicon.svg", "/icons.svg", "/assets/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/auth/csrf", "/api/health").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
+                .requestMatchers(HttpMethod.GET, "/", "/index.html", "/favicon.svg", "/icons.svg", "/privacy.html", "/assets/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/auth/csrf", "/api/auth/google/config", "/api/health").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login", "/api/auth/google/challenge", "/api/auth/google/login", "/api/auth/google/register").permitAll()
                 .requestMatchers("/api/users/**").denyAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().denyAll())
@@ -50,7 +50,8 @@ public class SecurityConfig {
                 .accessDeniedHandler((q, p, ex) -> SecurityResponses.problem(p,403,
                     ex instanceof CsrfException ? "CSRF_INVALID" : "ACCESS_DENIED", "操作を許可できません。ログイン状態を確認してください")))
             .logout(l -> l.disable())
-            .addFilterAfter(new AccountBoundaryFilter(), AnonymousAuthenticationFilter.class)
+            .addFilterAfter(new CredentialVersionFilter(credentials), AnonymousAuthenticationFilter.class)
+            .addFilterAfter(new AccountBoundaryFilter(), CredentialVersionFilter.class)
             .addFilterBefore(new ApiRequestLimitFilter(), CsrfFilter.class)
             .addFilterBefore(new AuthRateLimitFilter(Clock.systemUTC(),limit), CsrfFilter.class)
             .build();

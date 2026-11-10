@@ -15,3 +15,5 @@
 .auth-primary { background: #d6402b; color: white; font-weight: 700; }
 .auth-switch { color: #f1efea; background: transparent; border: 1px solid #545d66; margin-top: 12px; }
 .auth-card button:disabled { opacity: .6; cursor: wait; }
+
+.auth-help a { color: #f0bd68; text-underline-offset: 3px; }

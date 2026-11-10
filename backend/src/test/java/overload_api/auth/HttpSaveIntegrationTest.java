@@ -65,6 +65,11 @@ class HttpSaveIntegrationTest extends MySqlIntegrationTest {
         var asset = browser.client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + matcher.group(1)))
             .timeout(Duration.ofSeconds(5)).build(), HttpResponse.BodyHandlers.ofString());
         assertEquals(200, asset.statusCode()); assertFalse(asset.body().contains("<html"));
+        var privacy = browser.client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/privacy.html"))
+            .timeout(Duration.ofSeconds(5)).build(), HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, privacy.statusCode());
+        assertTrue(privacy.body().contains("プライバシーについて"));
+        assertTrue(privacy.body().contains("mailto:tttt4830@gmail.com"));
         assertEquals(401, browser.send("/me", null, false).statusCode());
         assertEquals(401, browser.client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/.env")).build(), HttpResponse.BodyHandlers.ofString()).statusCode());
         assertEquals(404, browser.client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/assets/missing.js")).build(), HttpResponse.BodyHandlers.ofString()).statusCode());

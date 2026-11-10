@@ -40,12 +40,17 @@ class CloudSetupIntegrationTest(unittest.TestCase):
         app.sql('INSERT INTO `' + self.schema + "`.users VALUES(1,'本人')")
         app.sql('UPDATE `' + self.schema + "`.users SET name='更新' WHERE id=1")
         self.assertEqual('更新', app.sql('SELECT name FROM `' + self.schema + '`.users WHERE id=1'))
+        app.sql('INSERT INTO `' + self.schema + "`.user_credentials VALUES(1,'旧ハッシュ')")
+        app.sql('UPDATE `' + self.schema + "`.user_credentials SET name='新ハッシュ' WHERE id=1")
+        self.assertEqual('新ハッシュ', app.sql('SELECT name FROM `' + self.schema + '`.user_credentials WHERE id=1'))
+        app.sql('INSERT INTO `' + self.schema + "`.google_accounts VALUES(1,'Google識別子')")
         for statement in [
             'CREATE TABLE `' + self.schema + '`.unexpected(id INT)',
             'SELECT User FROM mysql.user',
             'DELETE FROM `' + self.schema + '`.users',
             'INSERT INTO `' + self.schema + "`.exercises VALUES(1,'改変')",
-            'UPDATE `' + self.schema + "`.user_credentials SET name='改変'",
+            'UPDATE `' + self.schema + "`.google_accounts SET name='改変'",
+            'DELETE FROM `' + self.schema + '`.user_credentials',
         ]:
             with self.subTest(statement=statement), self.assertRaises(setup.PreparationError):
                 app.sql(statement)

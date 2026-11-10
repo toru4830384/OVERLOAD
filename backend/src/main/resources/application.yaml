@@ -37,3 +37,6 @@ overload:
     allowed-origins: ${OVERLOAD_CORS_ORIGINS:}
   auth:
     attempts-per-minute: 20
+
+  google:
+    client-id: ${OVERLOAD_GOOGLE_CLIENT_ID:}

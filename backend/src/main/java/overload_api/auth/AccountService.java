@@ -38,8 +38,8 @@ public class AccountService {
     /** @param loginId ログインID @param password 入力パスワード @return 認証成功した本人 */
     public UserIdentity authenticate(String loginId, String password) {
         Credential credential = credentials.findByLoginId(loginId);
-        boolean valid = passwords.matches(password, credential == null ? dummyHash : credential.passwordHash());
-        if (credential == null || !valid) throw new BadCredentialsException("ログインIDまたはパスワードが違います");
-        return new UserIdentity(credential.userId(), credential.loginId(), credential.draftNamespace());
+        boolean valid = passwords.matches(password, credential == null || credential.passwordHash() == null ? dummyHash : credential.passwordHash());
+        if (credential == null || credential.passwordHash() == null || !valid) throw new BadCredentialsException("ログインIDまたはパスワードが違います");
+        return new UserIdentity(credential.userId(), credential.loginId(), credential.draftNamespace(), credential.authVersion());
     }
 }

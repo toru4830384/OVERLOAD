@@ -10,6 +10,34 @@ import org.springframework.jdbc.datasource.init.ScriptUtils;
 import overload_api.support.IsolatedMySqlServer;
 /** 本番と同じ移行ファイルで、既存データを保持し、自動baselineしないことを確認する。 */
 class MigrationIntegrationTest {
+    @Test void versionFourPreservesExistingPasswordAndDraftNamespace() throws Exception {
+        var server=IsolatedMySqlServer.fromEnvironment();
+        String name="overload_migration_"+UUID.randomUUID().toString().replace("-","");
+        try(var c=DriverManager.getConnection(server.url(),server.user(),server.password());var admin=c.createStatement()) {
+            server.verifyConstraints(c);
+            admin.executeUpdate("CREATE DATABASE `"+name+"` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            try {
+                Flyway.configure().dataSource(server.databaseUrl(name),server.user(),server.password())
+                    .target("3").cleanDisabled(true).load().migrate();
+                c.setCatalog(name);
+                var data=c.createStatement();
+                data.executeUpdate("INSERT INTO users(id,name,gender,age,body_weight_kg) VALUES(4830,'既存','male',30,80)");
+                data.executeUpdate("INSERT INTO user_credentials(user_id,login_id,password_hash,draft_namespace) "
+                    +"VALUES(4830,'migration_user','unchanged-password-hash','unchanged-draft-key')");
+                Flyway.configure().dataSource(server.databaseUrl(name),server.user(),server.password()).cleanDisabled(true).load().migrate();
+                try(var rs=data.executeQuery("SELECT password_hash,draft_namespace,auth_version FROM user_credentials WHERE user_id=4830")) {
+                    assertTrue(rs.next());assertEquals("unchanged-password-hash",rs.getString(1));
+                    assertEquals("unchanged-draft-key",rs.getString(2));assertEquals(0,rs.getLong(3));
+                }
+                data.executeUpdate("UPDATE user_credentials SET password_hash=NULL WHERE user_id=4830");
+                data.executeUpdate("INSERT INTO google_accounts(user_id,google_subject) VALUES(4830,'verified-subject')");
+            } finally {
+                try(var cleanup=DriverManager.getConnection(server.url(),server.user(),server.password());var drop=cleanup.createStatement()) {
+                    drop.executeUpdate("DROP DATABASE `"+name+"`");
+                }
+            }
+        }
+    }
     @Test void populatedLegacySchemaRequiresExplicitBaselineAndPreservesExistingRecords() throws Exception {
         var server=IsolatedMySqlServer.fromEnvironment();
         String user=server.user();

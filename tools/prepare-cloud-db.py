@@ -19,7 +19,8 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 PRIVILEGES = {
     'users': 'SELECT,INSERT,UPDATE',
-    'user_credentials': 'SELECT,INSERT',
+    'user_credentials': 'SELECT,INSERT,UPDATE',
+    'google_accounts': 'SELECT,INSERT',
     'workout_sessions': 'SELECT,INSERT,UPDATE',
     'workout_sets': 'SELECT,INSERT',
     'SPRING_SESSION': 'SELECT,INSERT,UPDATE,DELETE',
@@ -135,7 +136,7 @@ def main():
         print(str(error) if isinstance(error, PreparationError) else '接続ツールの準備に失敗しました。')
         return 1
     print('公開用DB：' + args.schema + '\n実行用ユーザー：' + args.app_user)
-    print('新しいDBだけを移行し、新しい実行ユーザーへ9表の必要な読み書き権限だけを与えます。')
+    print('新しいDBだけを移行し、新しい実行ユーザーへ10表の必要な読み書き権限だけを与えます。')
     print('既存DB・ユーザー・パスワードを上書きせず、有料化や削除も行いません。')
     print('途中で失敗した場合は、新規DBを消さずに停止して原因を確認します。')
     if input('この準備を実行する場合は「準備」と入力してください：').strip() != '準備':

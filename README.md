@@ -20,3 +20,5 @@ If you are developing a production application, we recommend using TypeScript wi
 認証、本人ごとのデータ分離、DB移行と安全な起動方法は [公開準備と起動手順](docs/公開準備と起動手順.md) を参照してください。起動中のJARを再ビルドで上書きしないよう、`tools/run-backend.py` を使用します。クラウドへの公開は別工程です。
 
 カード登録なしの構成は [RenderとTiDBの公開手順](docs/RenderとTiDBの公開手順.md) を参照してください。`render.yaml`は無料枠を明示しています。
+
+パスワード変更・Googleログインの作業版と設定手順は [認証機能の追加手順](docs/パスワード変更とGoogleログイン.md) を参照してください。Google設定と本番DB移行の完了前に、この作業版を公開しないでください。

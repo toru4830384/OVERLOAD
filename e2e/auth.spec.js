@@ -20,7 +20,8 @@ test('ログイン後の全入力欄がスマホ幅でも16px以上で、手動�
     }
   }
   await page.getByRole('button', { name: 'プロフィール', exact: true }).click();
-  await checkFields(3);
+  await expect(page.getByLabel('新しいパスワード（確認）', { exact: true })).toBeVisible();
+  await checkFields(6);
   await page.getByRole('button', { name: '種目', exact: true }).click();
   await checkFields(3);
   await page.getByRole('button', { name: 'ワークアウト', exact: true }).click();

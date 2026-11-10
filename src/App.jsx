@@ -16,6 +16,7 @@ import { fmtDate } from "./utils/date.js";
 import WorkoutScreen from "./screens/WorkoutScreen.jsx";
 import HistoryScreen from "./screens/HistoryScreen.jsx";
 import ExercisesScreen from "./screens/ExercisesScreen.jsx";
+import AccountSecurityPanel from "./features/auth/AccountSecurityPanel.jsx";
 import ProfileScreen from "./screens/ProfileScreen.jsx";
 import ExercisePicker from "./components/modals/ExercisePicker.jsx";
 import ExerciseDetail from "./components/modals/ExerciseDetail.jsx";
@@ -47,7 +48,7 @@ function notifyRestFinished() {
   vibrate();
 }
 
-export default function Overload({ user, api, onLogout }) {
+export default function Overload({ user, api, onLogout, onPasswordChanged }) {
   const profileState = useProfile(api);
   const { name: userName, gender, age, bodyWeightKg } = profileState.profile;
   const setUserName = value => profileState.update("name", value);
@@ -449,6 +450,7 @@ export default function Overload({ user, api, onLogout }) {
         )}
 
         {tab === "profile" && (profileState.loadState !== "ready" ? <div role="alert">プロフィールの読み込み完了後に編集できます。</div> :
+          <>
           <ProfileScreen
             userName={userName}
             setUserName={setUserName}
@@ -463,6 +465,8 @@ export default function Overload({ user, api, onLogout }) {
             saveError={profileState.error}
             retrySave={profileState.retrySave}
           />
+          <AccountSecurityPanel api={api} onPasswordChanged={onPasswordChanged} disabled={profileState.saveState !== "saved" || Boolean(profileState.validationError)} />
+          </>
         )}
       </div>
 

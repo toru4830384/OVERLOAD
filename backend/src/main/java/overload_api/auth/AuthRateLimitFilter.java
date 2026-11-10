@@ -20,7 +20,8 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     /** @return パスワード照合と登録にのみ試行制限を適用する */
     @Override protected boolean shouldNotFilter(HttpServletRequest request) {
         return !request.getMethod().equals("POST") || !(ApiPaths.path(request).equals("/api/auth/login")
-            || ApiPaths.path(request).equals("/api/auth/register"));
+            || ApiPaths.path(request).equals("/api/auth/register") || ApiPaths.path(request).equals("/api/auth/password")
+            || ApiPaths.path(request).startsWith("/api/auth/google/"));
     }
     private synchronized boolean accept(String key) {
         long now = clock.millis();
