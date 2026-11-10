@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import GoogleSignInButton from "./GoogleSignInButton.jsx";
+import PasswordField from "./PasswordField.jsx";
 import { getGoogleConfiguration, RequestTimeoutError } from "../../api/client.js";
 import { passwordChangeError } from "./securityValidation.js";
 import "./security.css";
@@ -54,9 +55,9 @@ export default function AccountSecurityPanel({ api, onPasswordChanged, disabled 
     {status?.hasPassword && <form onSubmit={changePassword}>
       <h3>パスワードを変更</h3>
       <fieldset disabled={busy || disabled}>
-        <label>現在のパスワード<input type="password" autoComplete="current-password" required minLength={12} maxLength={128} value={input.currentPassword} onChange={e => setInput(p => ({ ...p, currentPassword: e.target.value }))} /></label>
-        <label>新しいパスワード<input type="password" autoComplete="new-password" required minLength={12} maxLength={128} value={input.newPassword} onChange={e => setInput(p => ({ ...p, newPassword: e.target.value }))} /></label>
-        <label>新しいパスワード（確認）<input type="password" autoComplete="new-password" required minLength={12} maxLength={128} value={input.confirmation} onChange={e => setInput(p => ({ ...p, confirmation: e.target.value }))} /></label>
+        <PasswordField label="現在のパスワード" autoComplete="current-password" required minLength={12} maxLength={128} value={input.currentPassword} onChange={e => setInput(p => ({ ...p, currentPassword: e.target.value }))} />
+        <PasswordField label="新しいパスワード" autoComplete="new-password" required minLength={12} maxLength={128} value={input.newPassword} onChange={e => setInput(p => ({ ...p, newPassword: e.target.value }))} />
+        <PasswordField label="新しいパスワード（確認）" autoComplete="new-password" required minLength={12} maxLength={128} value={input.confirmation} onChange={e => setInput(p => ({ ...p, confirmation: e.target.value }))} />
         <p>12〜128文字。変更後はすべての端末で再ログインが必要です。途中の下書きはこの端末に保持します。</p>
         <button type="submit">{busy ? "確認中…" : "パスワードを変更する"}</button>
       </fieldset>
@@ -67,7 +68,7 @@ export default function AccountSecurityPanel({ api, onPasswordChanged, disabled 
       {status.googleLinked ? <p>Google連携済みです。Googleで同じ記録にログインできます。</p> : google?.enabled ? <>
         <p>IDやパスワードを忘れた場合に備え、今のアカウントへGoogleを連携できます。</p>
         {!nonce ? <form onSubmit={prepareLink}><fieldset disabled={busy || disabled}>
-          <label>連携確認用の現在のパスワード<input type="password" autoComplete="current-password" required minLength={12} maxLength={128} value={linkPassword} onChange={e => setLinkPassword(e.target.value)} /></label>
+          <PasswordField label="連携確認用の現在のパスワード" autoComplete="current-password" required minLength={12} maxLength={128} value={linkPassword} onChange={e => setLinkPassword(e.target.value)} />
           <button type="submit">Google連携に進む</button>
         </fieldset></form> : <GoogleSignInButton clientId={google.clientId} nonce={nonce} onCredential={link} onFailure={cause => { setNonce(null); setError(cause.message); }} />}
       </> : <p>Googleログインは準備中です。利用可能になったら、ここから連携できます。</p>}

@@ -3,6 +3,7 @@ import { credentialsError, registrationError, registrationPayload, googleRegistr
 import { registerAccount, loginAccount, getGoogleConfiguration, googleLogin, registerGoogleAccount } from "../../api/client.js";
 import "./auth.css";
 import GoogleSignInButton from "./GoogleSignInButton.jsx";
+import PasswordField from "./PasswordField.jsx";
 
 /** 登録とログイン。既存の匿名記録を新規アカウントへ自動的に引き継がない。 */
 export default function AuthScreen({ onAuthenticated, notice = "" }) {
@@ -60,7 +61,7 @@ export default function AuthScreen({ onAuthenticated, notice = "" }) {
             例：taro_123（3〜32文字。半角の小文字 a〜z、数字 0〜9、アンダーバー「_」が使えます）
           </p>
           {!googleMode && <>
-          <label>パスワード<input name="password" type="password" autoComplete={register ? "new-password" : "current-password"} aria-describedby="password-help" required minLength={12} maxLength={128} value={input.password} onChange={e => update("password", e.target.value)} /></label>
+          <PasswordField key={register ? "register-password" : "login-password"} label="パスワード" name="password" autoComplete={register ? "new-password" : "current-password"} aria-describedby="password-help" required minLength={12} maxLength={128} value={input.password} onChange={e => update("password", e.target.value)} />
           <p id="password-help" className="auth-help">
             {register ? "12〜128文字で、ご自身だけが分かるものを決めてください。" : "登録時に決めたパスワードを入力してください（12〜128文字）。"}<br />
             英字・数字でも、文章でも作れます。<br />
