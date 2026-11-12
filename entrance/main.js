@@ -6,8 +6,6 @@ const title = document.querySelector("#loading-title");
 const elapsed = document.querySelector("#elapsed");
 const meter = document.querySelector("#activity");
 const retry = document.querySelector("#retry");
-const direct = document.querySelector("#direct");
-direct.href = appUrl;
 let active;
 
 async function connect() {
