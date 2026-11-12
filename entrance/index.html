@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>OVERLOAD — トレーニング記録</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./main.js"></script>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">YOUR TRAINING. YOUR PROGRESS.</p>
+    <h1>OVERLOAD<span aria-hidden="true">.</span></h1>
+    <p class="tagline">昨日の自分を、ひとつ超える。</p>
+    <section aria-labelledby="loading-title">
+      <div class="status-dot" aria-hidden="true"></div>
+      <h2 id="loading-title">〜 NOW LOADING 〜</h2>
+      <p id="status" role="status">あなたのトレーニング記録へ接続しています。</p>
+      <div id="activity" class="activity" aria-hidden="true"><span></span></div>
+      <p class="elapsed">経過時間 <strong id="elapsed">0秒</strong></p>
+      <p class="hint">しばらく利用がなかった場合は、準備に1分ほどかかることがあります。<br>経過時間は残り時間ではありません。</p>
+      <button id="retry" type="button" hidden>もう一度接続する</button>
+    </section>
+    <a id="direct" href="https://overload-cqtb.onrender.com/">直接OVERLOADを開く <span aria-hidden="true">↗</span></a>
+    <noscript><p>JavaScriptが無効です。上のリンクからOVERLOADを開いてください。</p></noscript>
+    <footer>積み重ねたトレーニングを、あなたの記録に。</footer>
+  </main>
+</body>
+</html>

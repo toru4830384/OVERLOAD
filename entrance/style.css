@@ -1,0 +1,24 @@
+:root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #f1efea; background: #15171a; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100svh; display: grid; place-items: center; background: radial-gradient(ellipse at 50% 0%, #33201f, transparent 65%); }
+main { width: min(100%, 600px); padding: 56px 24px 32px; text-align: center; }
+.eyebrow { color: #bcaaa5; font-size: 10px; letter-spacing: 2px; }
+h1 { margin: 12px 0; font-size: clamp(36px, 10vw, 64px); font-weight: 900; letter-spacing: -2px; }
+h1 span { color: #ed604b; }
+.tagline { margin: 0 0 40px; color: #c7c6c4; font-size: 15px; }
+section { padding: 28px 24px; border: 1px solid #44403e; background: #1e2124; border-radius: 18px; }
+.status-dot { width: 8px; height: 8px; margin: 0 auto 16px; border-radius: 50%; background: #ed604b; }
+h2 { font-size: 18px; letter-spacing: 1px; margin: 0 0 14px; }
+#status { color: #c7c6c4; font-size: 13px; line-height: 1.8; }
+.activity { margin: 24px 0; height: 4px; overflow: hidden; border-radius: 4px; background: #393d42; }
+.activity span { display: block; width: 35%; height: 100%; background: #ed604b; animation: connecting 1.8s ease-in-out infinite; }
+.elapsed { font-size: 12px; color: #b0b8bf; }
+.elapsed strong { display: inline-block; min-width: 54px; margin-left: 8px; color: #f1efea; font-size: 24px; font-variant-numeric: tabular-nums; }
+.hint { color: #b0b8bf; line-height: 1.9; font-size: 11px; margin: 20px 0 0; }
+button { margin-top: 20px; min-height: 44px; padding: 10px 18px; font-size: 16px; border: 0; border-radius: 8px; color: white; background: #ba3827; cursor: pointer; }
+a { display: inline-block; padding: 16px; margin-top: 18px; color: #d8b9ae; font-size: 13px; text-underline-offset: 4px; }
+button:focus-visible, a:focus-visible { outline: 2px solid #f0a82e; outline-offset: 3px; }
+footer { margin-top: 30px; font-size: 11px; color: #a8a9ab; }
+[hidden] { display: none !important; }
+@keyframes connecting { from { transform: translateX(-110%); } to { transform: translateX(390%); } }
+@media (prefers-reduced-motion: reduce) { .activity span { animation: none; width: 100%; opacity: .6; } }

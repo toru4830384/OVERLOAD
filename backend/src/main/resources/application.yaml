@@ -35,6 +35,7 @@ mybatis:
 overload:
   cors:
     allowed-origins: ${OVERLOAD_CORS_ORIGINS:}
+    entrance-origin: ${OVERLOAD_ENTRANCE_ORIGIN:}
   auth:
     attempts-per-minute: 20
 
