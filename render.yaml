@@ -1,0 +1,22 @@
+# planを省略すると有料プランになるため、必ずfreeを明記する。
+services:
+  - type: web
+    name: overload
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: codex/publication-auth
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeployTrigger: "off"
+    healthCheckPath: /api/health
+    envVars:
+      - key: OVERLOAD_DB_URL
+        sync: false
+      - key: OVERLOAD_DB_USER
+        sync: false
+      - key: OVERLOAD_DB_PASSWORD
+        sync: false
+      # 初期移行は別の移行用資格情報で明示的に実施する。
+      - key: SPRING_FLYWAY_ENABLED
+        value: "false"

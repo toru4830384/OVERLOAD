@@ -263,7 +263,6 @@ class UserServiceTest {
         }
         verify(mapper, never()).update(org.mockito.ArgumentMatchers.any(User.class));
     }
-
     @Test
     void nameConstraintAlsoAppliesToDirectServiceCalls() {
         var mapper = mock(UserMapper.class); when(mapper.findById(1L)).thenReturn(new User());
@@ -273,5 +272,4 @@ class UserServiceTest {
         }
         verify(mapper, never()).update(org.mockito.ArgumentMatchers.any(User.class));
     }
-
 }

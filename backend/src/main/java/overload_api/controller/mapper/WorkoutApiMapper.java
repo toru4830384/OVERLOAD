@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Objects;
 
 import overload_api.time.WorkoutTime;
+import overload_api.controller.dto.WorkoutSessionResponse;
+import overload_api.model.WorkoutSession;
 import overload_api.controller.dto.WorkoutRequest;
 import overload_api.controller.dto.WorkoutExerciseRequest;
 import overload_api.controller.dto.WorkoutSetRequest;
@@ -25,16 +27,17 @@ public final class WorkoutApiMapper {
      * Controller用のワークアウト登録リクエストをService用DTOに変換する。
      *
      * @param request Controller用のワークアウト登録リクエスト
+     * @param authenticatedUserId 認証情報から取得した所有者ID
      * @return Service用のワークアウト登録リクエスト
      */
     public static overload_api.service.dto.WorkoutRequest toServiceRequest(
-            WorkoutRequest request) {
+            WorkoutRequest request, Long authenticatedUserId) {
 
         Objects.requireNonNull(request, "Workout request is required");
         overload_api.service.dto.WorkoutRequest serviceRequest =
                 new overload_api.service.dto.WorkoutRequest();
 
-        serviceRequest.setUserId(request.getUserId());
+        serviceRequest.setUserId(Objects.requireNonNull(authenticatedUserId, "Authenticated user is required"));
         serviceRequest.setStartedAt(request.getStartedAt());
         serviceRequest.setFinishedAt(request.getFinishedAt());
         serviceRequest.setBodyWeightKg(request.getBodyWeightKg());
@@ -159,5 +162,20 @@ public final class WorkoutApiMapper {
      */
     public static List<WorkoutSetResponse> toResponses(List<WorkoutSet> sets) {
         return sets.stream().map(WorkoutApiMapper::toResponse).toList();
+    }
+    /**
+     * ワークアウトセッションをAPIレスポンスDTOへ変換する。
+     *
+     * @param session 永続化モデル（必須）
+     * @return API用セッション。未終了の場合はfinishedAtがnull
+     */
+    public static WorkoutSessionResponse toSessionResponse(WorkoutSession session) {
+        Objects.requireNonNull(session, "Workout session is required");
+        WorkoutSessionResponse response = new WorkoutSessionResponse();
+        response.setId(session.getId());
+        response.setUserId(session.getUserId());
+        response.setStartedAt(WorkoutTime.toApiTime(session.getStartedAt()));
+        response.setFinishedAt(WorkoutTime.toApiTime(session.getFinishedAt()));
+        return response;
     }
 }

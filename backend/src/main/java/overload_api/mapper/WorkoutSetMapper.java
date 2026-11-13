@@ -17,24 +17,20 @@ import overload_api.model.WorkoutSet;
 public interface WorkoutSetMapper {
 
     /**
-     * 全てのワークアウトセットを取得する。
+     * 指定ユーザーのワークアウトセットを取得する。
      *
+     * @param userId 認証済み所有者ID
      * @return ワークアウトセット一覧
      */
     @Select("""
-        SELECT
-            id,
-            session_id AS sessionId,
-            exercise_id AS exerciseId,
-            exercise_order AS exerciseOrder,
-            set_number AS setNumber,
-            weight_kg AS weightKg,
-            reps,
-            note
-        FROM workout_sets
-        ORDER BY session_id, exercise_order, set_number
+        SELECT ws.id, ws.session_id AS sessionId, ws.exercise_id AS exerciseId,
+               ws.exercise_order AS exerciseOrder, ws.set_number AS setNumber,
+               ws.weight_kg AS weightKg, ws.reps, ws.note
+        FROM workout_sets ws JOIN workout_sessions sessions ON sessions.id = ws.session_id
+        WHERE sessions.user_id = #{userId}
+        ORDER BY ws.session_id, ws.exercise_order, ws.set_number
         """)
-    List<WorkoutSet> findAll();
+    List<WorkoutSet> findByUserId(Long userId);
 
     /**
      * ワークアウトセットを登録する。

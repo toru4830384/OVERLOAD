@@ -1,8 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getWorkoutHistory } from "../src/api/client.js";
+import { createAccountApi } from "../src/api/client.js";
 import { restoreHistory, summarizeCalories } from "../src/features/workouts/history.js";
 import { workoutPayload } from "../src/features/workouts/registration.js";
+
+const { getWorkoutHistory } = createAccountApi("test:namespace");
 
 const canonicalRow = {
   sessionId: 1,
@@ -31,8 +33,8 @@ test("80kg/60min/10-rep snapshot survives API reload and profile changes", async
   try {
     globalThis.fetch = async () => ({ ok: true, json: async () => structuredClone([canonicalRow]) });
     // 保存直後とページを再読込した際に同じ履歴APIから確定値を復元する。
-    const immediatelyAfterSave = restoreHistory(await getWorkoutHistory(1));
-    const afterReload = restoreHistory(await getWorkoutHistory(1));
+    const immediatelyAfterSave = restoreHistory(await getWorkoutHistory());
+    const afterReload = restoreHistory(await getWorkoutHistory());
     assert.deepEqual(afterReload, immediatelyAfterSave);
     assert.equal(afterReload[0].bodyWeightKg, 80);
     assert.equal(afterReload[0].totalCalories, 170.1);
@@ -73,4 +75,16 @@ test("calorie totals preserve stored hundredths without floating point drift", (
     totalCalories: 0.3, hasUnknownCalories: false,
   });
   assert.deepEqual(summarizeCalories([{ totalCalories: 0 }]), { totalCalories: 0, hasUnknownCalories: false });
+});
+
+test("history keeps API exercise names independently of catalog availability", () => {
+  const rows = [{ ...canonicalRow, exerciseId: 176, exerciseName: "種目一覧未取得の種目" }, {
+    ...canonicalRow, exerciseId: 177, exerciseName: null,
+  }];
+  const restored = restoreHistory(JSON.parse(JSON.stringify(rows)));
+  assert.equal(restored[0].entries[0].exerciseName, "種目一覧未取得の種目");
+  assert.equal(restored[0].entries[1].exerciseName, "");
+  assert.equal(restored[0].entries[1].exerciseId, 177);
+  assert.equal(restored[0].totalCalories, 170.1);
+  assert.equal(restored[0].entries.length, 2);
 });

@@ -25,11 +25,12 @@ public class WorkoutSessionService {
     }
 
     /**
-     * 全てのワークアウトセッションを取得する。
+     * 指定ユーザーのワークアウトセッションを取得する。
      *
+     * @param userId 認証済み所有者ID
      * @return ワークアウトセッション一覧
      */
-    public List<WorkoutSession> findAll() {
-        return workoutSessionMapper.findAll();
+    public List<WorkoutSession> findByUserId(Long userId) {
+        return workoutSessionMapper.findByUserId(userId);
     }
 }

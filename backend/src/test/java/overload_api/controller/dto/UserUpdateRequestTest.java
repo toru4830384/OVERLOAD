@@ -158,6 +158,16 @@ class UserUpdateRequestTest {
         }
     }
 
+    /** 必須体重とDBの桁数制約をAPI境界で検証する。 */
+    @Test
+    void rejectsMissingAndUnstorableBodyWeight() {
+        for (BigDecimal weight : new BigDecimal[] {null, new BigDecimal("1000"), new BigDecimal("70.001")}) {
+            var request = createValidRequest();
+            request.setBodyWeightKg(weight);
+            assertEquals("bodyWeightKg", validator.validate(request).iterator().next().getPropertyPath().toString());
+        }
+    }
+
     /**
      * 正常値を設定したユーザー更新リクエストを生成する。
      *
@@ -186,15 +196,6 @@ class UserUpdateRequestTest {
         request.setAge(0);
         assertEquals(0, validator.validate(request).size());
     }
-    /** 未入力・DB保存範囲外の体重をAPI境界で拒否する。 */
-    @Test
-    void rejectsMissingAndUnstorableBodyWeight() {
-        for (BigDecimal weight : new BigDecimal[] {null, new BigDecimal("1000"), new BigDecimal("70.001")}) {
-            var request = createValidRequest(); request.setBodyWeightKg(weight);
-            assertEquals("bodyWeightKg", validator.validate(request).iterator().next().getPropertyPath().toString());
-        }
-    }
-
     @Test
     void nameRejectsNullAndOverFiftyAndAcceptsBoundaryAndEmpty() {
         for (String name : new String[] {null, "a".repeat(51)}) {
@@ -206,5 +207,4 @@ class UserUpdateRequestTest {
             assertEquals(0, validator.validate(request).size());
         }
     }
-
 }

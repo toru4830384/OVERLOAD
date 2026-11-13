@@ -42,13 +42,13 @@ class WorkoutSessionServiceTest {
         session2.setId(2L);
         session2.setUserId(1L);
 
-        when(workoutSessionMapper.findAll())
+        when(workoutSessionMapper.findByUserId(1L))
                 .thenReturn(List.of(
                         session1,
                         session2));
 
         List<WorkoutSession> result =
-                workoutSessionService.findAll();
+                workoutSessionService.findByUserId(1L);
 
         assertNotNull(result);
         assertEquals(2, result.size());
@@ -68,7 +68,7 @@ class WorkoutSessionServiceTest {
                 result.get(1).getUserId());
 
         verify(workoutSessionMapper, times(1))
-                .findAll();
+                .findByUserId(1L);
     }
 
     /**
@@ -83,16 +83,16 @@ class WorkoutSessionServiceTest {
         WorkoutSessionService workoutSessionService =
                 new WorkoutSessionService(workoutSessionMapper);
 
-        when(workoutSessionMapper.findAll())
+        when(workoutSessionMapper.findByUserId(1L))
                 .thenReturn(List.of());
 
         List<WorkoutSession> result =
-                workoutSessionService.findAll();
+                workoutSessionService.findByUserId(1L);
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
 
         verify(workoutSessionMapper, times(1))
-                .findAll();
+                .findByUserId(1L);
     }
 }

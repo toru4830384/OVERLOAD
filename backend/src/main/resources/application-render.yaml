@@ -1,0 +1,21 @@
+# RenderのHTTPS終端から、同一オリジンの画面とAPIを配信する。
+server:
+  port: ${PORT:10000}
+  address: 0.0.0.0
+  forward-headers-strategy: native
+  tomcat:
+    threads:
+      max: 16
+      min-spare: 2
+    accept-count: 32
+    max-connections: 128
+    connection-timeout: 5s
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 4
+      minimum-idle: 0
+      connection-timeout: 10000
+      validation-timeout: 3000
+      idle-timeout: 300000
+      max-lifetime: 1500000

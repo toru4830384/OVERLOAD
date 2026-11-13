@@ -1,0 +1,14 @@
+**/.git
+**/node_modules
+**/build
+**/.gradle
+.run
+**/dist
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*.log
+**/__pycache__
+test-results
+playwright-report

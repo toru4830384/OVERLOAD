@@ -56,4 +56,14 @@ class ApiResponseMappingTest {
         assertEquals(3L, ExerciseMuscleApiMapper.toResponse(relationship).getMuscleId());
     }
 
+    @Test
+    void historyRestoresInstantAndHandlesNullableNoteAndSets() {
+        var start = OffsetDateTime.parse("2026-01-01T10:00:00+09:00");
+        var history = new overload_api.service.dto.WorkoutHistoryResponse();
+        history.setStartedAt(start.atZoneSameInstant(ZoneId.of("Asia/Tokyo")).toLocalDateTime());
+        var response = WorkoutApiMapper.toHistoryResponses(List.of(history)).get(0);
+        assertEquals(start.toInstant(), response.getStartedAt().toInstant());
+        assertNull(response.getNote());
+        assertTrue(response.getSets().isEmpty());
+    }
 }

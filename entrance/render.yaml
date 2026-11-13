@@ -1,0 +1,19 @@
+# 既存のWebサービスとは独立した無料の静的入口。作成前に所有者の承認が必要。
+services:
+  - type: web
+    name: overload-entry
+    runtime: static
+    branch: codex/publication-auth
+    autoDeployTrigger: "off"
+    buildCommand: "true"
+    staticPublishPath: ./entrance
+    headers:
+      - path: /*
+        name: Content-Security-Policy
+        value: "default-src 'none'; script-src 'self'; style-src 'self'; connect-src https://overload-cqtb.onrender.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+      - path: /*
+        name: Referrer-Policy
+        value: no-referrer
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff

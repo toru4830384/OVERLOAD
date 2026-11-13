@@ -2,12 +2,11 @@ package overload_api.controller.dto;
 
 import java.math.BigDecimal;
 
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.Size;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
+
+import overload_api.domain.validation.BodyWeight;
+import overload_api.domain.validation.ProfileAge;
+import overload_api.domain.validation.ProfileGender;
+import overload_api.domain.validation.ProfileName;
 
 /**
  * ユーザー情報更新時のリクエスト情報を保持するDTO。
@@ -15,43 +14,31 @@ import jakarta.validation.constraints.Pattern;
 public class UserUpdateRequest {
 
     /**
-     * ユーザー名。必須・50文字以内。空文字はDB仕様どおり許可する。
+     * ユーザー名。必須・50文字以内。DB仕様と同じく空文字は許可する。
      */
-    @NotNull
-    @Size(max = 50)
+    @ProfileName
     private String name;
 
     /**
      * 性別。API値はmale / female、表示名はフロントで変換する。
      */
-    @NotNull(message = "性別は必須です")
-    @Pattern(regexp = "male|female", message = "性別は男性または女性を選択してください")
+    @ProfileGender
     private String gender;
 
     /**
      * 年齢。
      *
-     * {@code @NotNull} と {@code @Min} により、年齢が必須かつ0以上であることを検証する。
+     * 共通の{@code @ProfileAge}で必須かつ0以上を検証する。
      */
-    @NotNull(message = "年齢は必須です")
-    @Min(
-            value = 0,
-            message = "年齢は0以上の値を入力してください")
+    @ProfileAge
     private Integer age;
 
     /**
      * 体重（kg）。
      *
-     * {@code @NotNull}・{@code @Digits}で必須・DECIMAL(5,2)の範囲を検証し、
-     * {@code @DecimalMin} により、
-     * 体重が0より大きい値であることを検証する。
+     * 共通の{@code @BodyWeight}で必須・正数・DECIMAL(5,2)の保存範囲を検証する。
      */
-    @NotNull(message = "体重は必須です")
-    @Digits(integer = 3, fraction = 2, message = "体重は999.99kg以下、小数第2位まで入力してください")
-    @DecimalMin(
-            value = "0.0",
-            inclusive = false,
-            message = "体重は0より大きい値を入力してください")
+    @BodyWeight
     private BigDecimal bodyWeightKg;
 
     /**

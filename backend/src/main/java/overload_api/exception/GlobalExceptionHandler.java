@@ -12,6 +12,19 @@ import org.springframework.dao.DataIntegrityViolationException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    /** @return 認証失敗の詳細を隠した401応答 */
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ProblemDetail authenticationFailure() {
+        var p = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED,"ログインIDまたはパスワードを確認してください");
+        p.setProperty("code","AUTH_REQUIRED"); return p;
+    }
+    /** @return 入力値そのものを反射しない400応答 */
+    @ExceptionHandler({org.springframework.web.bind.MethodArgumentNotValidException.class,
+        org.springframework.http.converter.HttpMessageNotReadableException.class})
+    public ProblemDetail invalidInput() {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,"入力形式・必須項目・文字数や数値の範囲を確認してください");
+    }
+
     /**
      * リソースが存在しない場合の例外を処理する。
      *

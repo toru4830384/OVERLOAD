@@ -29,3 +29,19 @@ src/App.jsx.bak
 backend/.gradle/
 backend/build/
 backend/bin/
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Browser evidence (publish selected screenshots separately)
+/playwright-report/
+/test-results/
+
+# 起動ごとに固定する実行ファイル
+/.run/
+__pycache__/
+*.pyc

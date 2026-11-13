@@ -32,7 +32,7 @@ import overload_api.exception.ResourceNotFoundException;
 /**
  * UserControllerの単体テストを行うクラス。
  */
-class UserControllerTest {
+class UserControllerTest extends overload_api.support.ControllerIdentityTest {
 
     /**
      * テスト対象のUserService。
@@ -85,7 +85,7 @@ class UserControllerTest {
                 new UserController(userService);
 
         overload_api.controller.dto.UserResponse result =
-                userController.findById(1L);
+                userController.findById();
 
         assertNotNull(result);
         assertEquals(1L, result.getId());
@@ -107,10 +107,11 @@ class UserControllerTest {
      */
     @Test
     void findByIdReturnsNotFoundWhenUserDoesNotExist() throws Exception {
+        asUser(9999L);
         when(userService.findById(9999L))
                 .thenThrow(new ResourceNotFoundException("User not found: 9999"));
 
-        mockMvc.perform(get("/api/users/9999"))
+        mockMvc.perform(get("/api/me"))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.status").value(404))
@@ -156,7 +157,7 @@ class UserControllerTest {
                 new BigDecimal("84.00"));
 
         overload_api.controller.dto.UserResponse result =
-                userController.update(1L, request);
+                userController.update(request);
 
         assertNotNull(result);
         assertEquals(1L, result.getId());
@@ -198,7 +199,7 @@ class UserControllerTest {
         mockMvc.perform(
                 org.springframework.test.web.servlet.request
                         .MockMvcRequestBuilders
-                        .put("/api/users/1")
+                        .put("/api/me")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(
@@ -238,7 +239,7 @@ class UserControllerTest {
         mockMvc.perform(
                 org.springframework.test.web.servlet.request
                         .MockMvcRequestBuilders
-                        .put("/api/users/1")
+                        .put("/api/me")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(
@@ -278,7 +279,7 @@ class UserControllerTest {
         mockMvc.perform(
                 org.springframework.test.web.servlet.request
                         .MockMvcRequestBuilders
-                        .put("/api/users/1")
+                        .put("/api/me")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(
@@ -303,11 +304,12 @@ class UserControllerTest {
      */
     @Test
     void updateReturnsNotFoundWhenUserDoesNotExist() throws Exception {
+        asUser(9999L);
         when(userService.update(
                 9999L, "田中　透", "male", 31, new BigDecimal("84.00")))
                 .thenThrow(new ResourceNotFoundException("User not found: 9999"));
 
-        mockMvc.perform(put("/api/users/9999")
+        mockMvc.perform(put("/api/me")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validUpdateRequestBody()))
                 .andExpect(status().isNotFound())
@@ -331,7 +333,7 @@ class UserControllerTest {
                 1L, "田中　透", "male", 31, new BigDecimal("84.00")))
                 .thenThrow(new DataIntegrityViolationException("internal database constraint detail"));
 
-        mockMvc.perform(put("/api/users/1")
+        mockMvc.perform(put("/api/me")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validUpdateRequestBody()))
                 .andExpect(status().isBadRequest())

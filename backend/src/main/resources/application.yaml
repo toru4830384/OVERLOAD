@@ -1,16 +1,43 @@
 spring:
   application:
     name: overload-api
-
   jackson:
     deserialization:
-      # Integer/Longへの変換で回数・IDなどの小数を切り捨てない。
       accept-float-as-int: false
-
+      fail-on-unknown-properties: true
   datasource:
-    url: jdbc:mysql://localhost:3306/overload_db
-    username: root
-    password:
-
+    url: ${OVERLOAD_DB_URL:jdbc:mysql://127.0.0.1:3306/overload_db}
+    username: ${OVERLOAD_DB_USER:overload}
+    password: ${OVERLOAD_DB_PASSWORD}
+  flyway:
+    user: ${OVERLOAD_MIGRATION_USER:${OVERLOAD_DB_USER:overload}}
+    password: ${OVERLOAD_MIGRATION_PASSWORD:${OVERLOAD_DB_PASSWORD}}
+    baseline-on-migrate: false
+    clean-disabled: true
+  session:
+    jdbc:
+      initialize-schema: never
+    timeout: 30m
+server:
+  max-http-request-header-size: 16KB
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        secure: true
+        same-site: lax
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
 mybatis:
   mapper-locations: classpath:mapper/*.xml
+overload:
+  cors:
+    allowed-origins: ${OVERLOAD_CORS_ORIGINS:}
+    entrance-origin: ${OVERLOAD_ENTRANCE_ORIGIN:}
+  auth:
+    attempts-per-minute: 20
+
+  google:
+    client-id: ${OVERLOAD_GOOGLE_CLIENT_ID:}

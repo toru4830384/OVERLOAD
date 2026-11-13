@@ -1,6 +1,6 @@
 plugins {
 	id 'java'
-	id 'org.springframework.boot' version '4.0.8'
+	id 'org.springframework.boot' version '4.0.9'
 	id 'io.spring.dependency-management' version '1.1.7'
 }
 
@@ -18,6 +18,15 @@ repositories {
 }
 
 dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.security:spring-security-oauth2-jose'
+    implementation 'org.springframework.boot:spring-boot-starter-session-jdbc'
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
+    implementation 'org.flywaydb:flyway-mysql'
+    // TiDBをMySQLと区別し、baselineで未対応のCREATE TABLE AS SELECTを発行しない。
+    implementation 'org.flywaydb:flyway-database-tidb:10.26.2'
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.86'
+    testImplementation 'org.springframework.security:spring-security-test'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:4.0.1'
@@ -30,4 +39,18 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+// 公開用ビルドでだけReactの成果物を同梱する。通常のAPIテストはNodeを要求しない。
+if (project.hasProperty('frontendDist')) {
+    def frontendDist = file(project.property('frontendDist'))
+    tasks.named('processResources') {
+        inputs.dir(frontendDist)
+        from(frontendDist) { into 'static' }
+        doFirst {
+            if (!new File(frontendDist, 'index.html').isFile()) {
+                throw new GradleException('先にフロントをビルドし、完成したdistを指定してください。')
+            }
+        }
+    }
 }

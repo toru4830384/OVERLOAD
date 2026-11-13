@@ -17,8 +17,9 @@ import overload_api.exception.WorkoutCaloriesOutOfRangeException;
 import overload_api.service.WorkoutService;
 
 /** 計算上限超過はDB障害ではなく、編集して再送できる入力拒否として返す。 */
+@org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc(addFilters = false)
 @WebMvcTest(WorkoutController.class)
-class WorkoutCalorieErrorContractTest {
+class WorkoutCalorieErrorContractTest extends overload_api.support.ControllerIdentityTest {
     @Autowired private MockMvc mockMvc;
     @MockitoBean private WorkoutService service;
 
@@ -26,7 +27,7 @@ class WorkoutCalorieErrorContractTest {
     void excessiveCalculatedCaloriesReturn422AndStableErrorCode() throws Exception {
         when(service.create(any())).thenThrow(new WorkoutCaloriesOutOfRangeException("カロリーが上限を超えています"));
         mockMvc.perform(post("/api/workouts").contentType(MediaType.APPLICATION_JSON).content("""
-                {"userId":1,"startedAt":"2026-01-01T10:00:00+09:00",
+                {"startedAt":"2026-01-01T10:00:00+09:00",
                  "finishedAt":"2026-01-01T11:00:00+09:00","bodyWeightKg":80,
                  "clientRequestId":"12345678-1234-1234-1234-123456789abc",
                  "exercises":[{"exerciseId":1,"sets":[{"setNumber":1,"weightKg":50,"reps":10}]}]}

@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import overload_api.auth.CurrentUser;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -49,20 +49,18 @@ public class WorkoutController {
             @Valid @RequestBody WorkoutRequest request) {
 
         return WorkoutApiMapper.toResponses(
-                workoutService.create(WorkoutApiMapper.toServiceRequest(request)));
+                workoutService.create(WorkoutApiMapper.toServiceRequest(request, CurrentUser.id())));
     }
 
     /**
-     * 指定されたユーザーのワークアウト履歴を取得する。
+     * ログイン本人のワークアウト履歴を取得する。
      *
-     * @param userId ユーザーID
      * @return ワークアウト履歴一覧
      */
     @GetMapping("/history")
-    public List<WorkoutHistoryResponse> findHistory(
-            @RequestParam("user_id") Long userId) {
+    public List<WorkoutHistoryResponse> findHistory() {
 
         return WorkoutApiMapper.toHistoryResponses(
-                workoutService.findHistoryByUserId(userId));
+                workoutService.findHistoryByUserId(CurrentUser.id()));
     }
 }

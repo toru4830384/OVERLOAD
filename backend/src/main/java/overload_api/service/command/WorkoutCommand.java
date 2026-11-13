@@ -4,11 +4,11 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotEmpty;
+import overload_api.domain.validation.WorkoutExercises;
+import overload_api.domain.validation.WorkoutSets;
 import jakarta.validation.constraints.NotNull;
 import overload_api.domain.validation.BodyWeight;
-import jakarta.validation.Validation;
-import jakarta.validation.Validator;
+import overload_api.domain.validation.CommandValidation;
 import overload_api.domain.validation.WorkoutNote;
 import overload_api.domain.validation.WorkoutRepetitions;
 import overload_api.domain.validation.WorkoutRequestIdentifier;
@@ -27,7 +27,7 @@ public record WorkoutCommand(
         @NotNull OffsetDateTime finishedAt,
         @BodyWeight BigDecimal bodyWeightKg,
         @WorkoutRequestIdentifier String clientRequestId,
-        @NotEmpty List<@NotNull @Valid Exercise> exercises) {
+        @WorkoutExercises List<@NotNull @Valid Exercise> exercises) {
 
     /** 保存条件と日時の順序を検証する。 */
     public WorkoutCommand(Long userId, OffsetDateTime startedAt, OffsetDateTime finishedAt,
@@ -38,7 +38,7 @@ public record WorkoutCommand(
         this.bodyWeightKg = bodyWeightKg;
         this.clientRequestId = clientRequestId;
         this.exercises = immutable(exercises);
-        validate(this);
+        CommandValidation.validate(this);
         if (finishedAt.toInstant().isBefore(startedAt.toInstant())
                 || finishedAt.toInstant().isAfter(WorkoutTime.now().toInstant())) {
             throw new IllegalArgumentException("Workout timestamps must be ordered and not in the future");
@@ -64,13 +64,13 @@ public record WorkoutCommand(
 
     /** 種目・メモ・セットの変更不能な値。 */
     public record Exercise(@NotNull Long exerciseId, @WorkoutNote String note,
-            @NotEmpty List<@NotNull @Valid Set> sets) {
+            @WorkoutSets List<@NotNull @Valid Set> sets) {
         /** 種目情報をコピーし、メモ長・セット一覧を検証する。 */
         public Exercise(Long exerciseId, String note, List<Set> sets) {
             this.exerciseId = exerciseId;
             this.note = note;
             this.sets = immutable(sets);
-            validate(this);
+            CommandValidation.validate(this);
         }
     }
 
@@ -82,7 +82,7 @@ public record WorkoutCommand(
             this.setNumber = setNumber;
             this.weightKg = weightKg;
             this.reps = reps;
-            validate(this);
+            CommandValidation.validate(this);
         }
     }
 
@@ -91,20 +91,7 @@ public record WorkoutCommand(
         return input == null ? null : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(input));
     }
 
-    private static void validate(Object value) {
-        var violations = ValidationHolder.VALIDATOR.validate(value);
-        if (!violations.isEmpty()) {
-            throw new IllegalArgumentException(violations.stream()
-                    .map(v -> v.getPropertyPath() + ": " + v.getMessage()).sorted()
-                    .collect(java.util.stream.Collectors.joining("; ")));
-        }
-    }
-
     private static void require(Object value, String message) {
         if (value == null) throw new IllegalArgumentException(message);
-    }
-    private static class ValidationHolder {
-        // 登録のたびにFactoryを生成せず、Command間でValidatorを共有する。
-        private static final Validator VALIDATOR = Validation.buildDefaultValidatorFactory().getValidator();
     }
 }

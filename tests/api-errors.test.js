@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ApiError, saveWorkout } from "../src/api/client.js";
+import { ApiError, createAccountApi } from "../src/api/client.js";
+
+const { saveWorkout } = createAccountApi("test:namespace");
 
 test("confirmed API rejection preserves status/code and network failures stay uncertain", async () => {
   const original = globalThis.fetch;

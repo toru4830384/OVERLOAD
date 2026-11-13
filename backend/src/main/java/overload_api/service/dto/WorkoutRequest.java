@@ -3,6 +3,7 @@ package overload_api.service.dto;
 import java.math.BigDecimal;
 
 import java.util.List;
+import overload_api.domain.validation.WorkoutExercises;
 import java.time.OffsetDateTime;
 
 /**

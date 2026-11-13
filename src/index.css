@@ -54,6 +54,13 @@ body {
   margin: 0;
 }
 
+/* iPhone Safariの入力時の自動ズームを防ぐ。手動の拡大操作は制限しない。 */
+input,
+select,
+textarea {
+  font-size: max(16px, 1rem);
+}
+
 #root {
   width: 1126px;
   max-width: 100%;

@@ -20,7 +20,7 @@ import overload_api.service.WorkoutSetService;
 /**
  * WorkoutSetControllerの単体テストを行うクラス。
  */
-class WorkoutSetControllerTest {
+class WorkoutSetControllerTest extends overload_api.support.ControllerIdentityTest {
 
     /**
      * セットが存在する場合に、
@@ -57,7 +57,7 @@ class WorkoutSetControllerTest {
         set2.setReps(8);
         set2.setNote("2セット目");
 
-        when(workoutSetService.findAll())
+        when(workoutSetService.findByUserId(1L))
                 .thenReturn(List.of(
                         set1,
                         set2));
@@ -136,7 +136,7 @@ class WorkoutSetControllerTest {
                 result.get(1).getNote());
 
         verify(workoutSetService, times(1))
-                .findAll();
+                .findByUserId(1L);
     }
 
     /**
@@ -148,7 +148,7 @@ class WorkoutSetControllerTest {
         WorkoutSetService workoutSetService =
                 mock(WorkoutSetService.class);
 
-        when(workoutSetService.findAll())
+        when(workoutSetService.findByUserId(1L))
                 .thenReturn(List.of());
 
         WorkoutSetController workoutSetController =
@@ -161,6 +161,6 @@ class WorkoutSetControllerTest {
         assertTrue(result.isEmpty());
 
         verify(workoutSetService, times(1))
-                .findAll();
+                .findByUserId(1L);
     }
 }

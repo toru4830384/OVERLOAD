@@ -3,6 +3,8 @@ package overload_api.mapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Options;
 
 import overload_api.model.User;
 
@@ -11,6 +13,11 @@ import overload_api.model.User;
  */
 @Mapper
 public interface UserMapper {
+
+    /** @param user 必須プロフィールを検証済みの新規ユーザー。生成IDを受け取る。 */
+    @Insert("INSERT INTO users(name, gender, age, body_weight_kg) VALUES(#{name}, #{gender}, #{age}, #{bodyWeightKg})")
+    @Options(useGeneratedKeys = true, keyProperty = "id")
+    void insert(User user);
 
     /**
      * 指定されたIDのユーザー情報を取得する。

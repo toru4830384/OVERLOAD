@@ -39,12 +39,20 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
      */
     @Autowired
     private JdbcTemplate jdbcTemplate;
+    @Autowired private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+
+    /** 実際のINSERT後、同じトランザクション内のDB行を確認するための監視。 */
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+    private overload_api.mapper.WorkoutSetMapper workoutSetMapper;
 
     /**
      * 各テスト実行前にテスト用データベースを初期化する。
      */
     @BeforeEach
     void setUp() {
+        jdbcTemplate.update("DELETE FROM SPRING_SESSION_ATTRIBUTES");
+        jdbcTemplate.update("DELETE FROM SPRING_SESSION");
+        jdbcTemplate.update("DELETE FROM user_credentials");
         jdbcTemplate.update("DELETE FROM workout_sets");
         jdbcTemplate.update("DELETE FROM workout_sessions");
         jdbcTemplate.update("DELETE FROM exercise_muscles");
@@ -75,37 +83,38 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
         assertTrue(result.stream().allMatch(set -> set.getId() != null));
     }
 
-    /** 1セット目の実INSERTを確認したDBトリガーで2セット目を失敗させる。 */
+    /** 1セット目の実INSERTを確認し、2セット目のDB制約違反で全登録をロールバックする。 */
     @Test
     void createRollsBackSessionAndSetsWhenSecondSetInsertFails() {
         var request = validRequest();
-        jdbcTemplate.execute("""
-                CREATE TRIGGER fail_second_workout_set BEFORE INSERT ON workout_sets
-                FOR EACH ROW
-                BEGIN
-                    IF NEW.set_number = 2 THEN
-                        IF EXISTS (SELECT 1 FROM workout_sets
-                                   WHERE session_id = NEW.session_id AND set_number = 1) THEN
-                            SIGNAL SQLSTATE '45000'
-                                SET MESSAGE_TEXT = 'review_second_insert_after_first_success';
-                        ELSE
-                            SIGNAL SQLSTATE '45000'
-                                SET MESSAGE_TEXT = 'review_first_insert_missing';
-                        END IF;
-                    END IF;
-                END
-                """);
+        // TiDBにも存在するCHECK制約を使い、トリガー未対応を試験の省略で回避しない。
+        jdbcTemplate.execute("ALTER TABLE workout_sets ADD CONSTRAINT review_reject_second_set CHECK (set_number <> 2)");
+        var firstInserted = new java.util.concurrent.atomic.AtomicBoolean();
+        // MyBatisのMapperはJDKプロキシなので、抽象メソッドではなく元の委譲先を呼ぶ。
+        var realInsert = org.mockito.Mockito.mockingDetails(workoutSetMapper)
+            .getMockCreationSettings().getDefaultAnswer();
+        org.mockito.Mockito.doAnswer(invocation -> {
+            realInsert.answer(invocation);
+            overload_api.model.WorkoutSet row = invocation.getArgument(0);
+            if (row.getSetNumber() == 1) {
+                assertEquals(1, jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM workout_sets WHERE id = ? AND set_number = 1", Integer.class, row.getId()));
+                firstInserted.set(true);
+            }
+            return null;
+        }).when(workoutSetMapper).insert(org.mockito.ArgumentMatchers.any());
         try {
             DataAccessException exception = assertThrows(
                     DataAccessException.class, () -> workoutService.create(request));
-            assertTrue(exception.getMostSpecificCause().getMessage()
-                    .contains("review_second_insert_after_first_success"));
+            assertTrue(firstInserted.get(), "DBで1セット目のINSERT成功を確認してから失敗すること");
+            assertTrue(exception.getMostSpecificCause().getMessage().contains("review_reject_second_set"));
             assertEquals(0, jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM workout_sessions", Integer.class));
             assertEquals(0, jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM workout_sets", Integer.class));
         } finally {
-            jdbcTemplate.execute("DROP TRIGGER IF EXISTS fail_second_workout_set");
+            org.mockito.Mockito.reset(workoutSetMapper);
+            jdbcTemplate.execute("ALTER TABLE workout_sets DROP CHECK review_reject_second_set");
         }
         workoutService.create(request);
         assertEquals(1, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM workout_sessions", Integer.class));
@@ -193,19 +202,19 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
     void httpRegistrationAndHistoryPreserveCanonicalCalories() throws Exception {
         var request = validRequest();
         String body = """
-                {"userId":%d,"startedAt":"2026-01-01T10:00:00+09:00",
+                {"startedAt":"2026-01-01T10:00:00+09:00",
                  "finishedAt":"2026-01-01T11:00:00+09:00","bodyWeightKg":70,
                  "clientRequestId":"%s","exercises":[{"exerciseId":%d,"note":"Integration Test",
                   "sets":[{"setNumber":1,"weightKg":50,"reps":10},{"setNumber":2,"weightKg":55,"reps":8}]}]}
-                """.formatted(request.getUserId(), request.getClientRequestId(), request.getExercises().get(0).getExerciseId());
+                """.formatted(request.getClientRequestId(), request.getExercises().get(0).getExerciseId());
         for (int attempt = 0; attempt < 2; attempt++) {
-            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/workouts")
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/workouts").with(identity(request.getUserId()))
                     .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(body))
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated());
         }
         jdbcTemplate.update("UPDATE users SET body_weight_kg = 90 WHERE id = ?", request.getUserId());
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/workouts/history")
-                .param("user_id", request.getUserId().toString()))
+                .with(identity(request.getUserId())))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$[0].totalCalories").value(150.31))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$[0].bodyWeightKg").value(70.0))
@@ -218,12 +227,12 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
     void httpHistoryKeepsRestCaloriesAndStartWeightAfterReload() throws Exception {
         var request = validRequest();
         String body = """
-                {"userId":%d,"startedAt":"2026-01-01T10:00:00+09:00",
+                {"startedAt":"2026-01-01T10:00:00+09:00",
                  "finishedAt":"2026-01-01T11:00:00+09:00","bodyWeightKg":80,
                  "clientRequestId":"%s","exercises":[{"exerciseId":%d,"note":"休憩を含む60分",
                   "sets":[{"setNumber":1,"weightKg":50,"reps":10}]}]}
-                """.formatted(request.getUserId(), request.getClientRequestId(), request.getExercises().get(0).getExerciseId());
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/workouts")
+                """.formatted(request.getClientRequestId(), request.getExercises().get(0).getExerciseId());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/workouts").with(identity(request.getUserId()))
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content(body))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated());
         assertEquals(new BigDecimal("170.10"), jdbcTemplate.queryForObject(
@@ -233,7 +242,7 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
         // 初回取得と、プロフィールを変えた後の再取得で同じ確定値を返す。
         for (int read = 0; read < 2; read++) {
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/workouts/history")
-                    .param("user_id", request.getUserId().toString()))
+                    .with(identity(request.getUserId())))
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$[0].totalCalories").value(170.1))
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$[0].bodyWeightKg").value(80.0))
@@ -241,6 +250,21 @@ class WorkoutServiceIntegrationTest extends MySqlIntegrationTest {
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$[0].finishedAt").value("2026-01-01T11:00:00+09:00"));
             jdbcTemplate.update("UPDATE users SET body_weight_kg = 90 WHERE id = ?", request.getUserId());
         }
+    }
+
+    private org.springframework.test.web.servlet.request.RequestPostProcessor identity(Long id) {
+        String loginId="fixture_"+id;
+        if (jdbcTemplate.queryForObject("SELECT COUNT(*) FROM user_credentials WHERE user_id=?",Integer.class,id)==0) {
+            jdbcTemplate.update("INSERT INTO user_credentials(user_id,login_id,password_hash,draft_namespace) VALUES(?,?,?,?)",
+                id,loginId,passwordEncoder.encode(java.util.UUID.randomUUID().toString()),"fixture_namespace");
+        }
+        return request -> {
+            var identity = new overload_api.auth.UserIdentity(id,loginId,"fixture_namespace");
+            request.addHeader("X-Overload-Account", identity.accountKey());
+            var auth = org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated(identity,null,java.util.List.of());
+            request = org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication(auth).postProcessRequest(request);
+            return org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf().postProcessRequest(request);
+        };
     }
 
     /** 登録済みのユーザー・種目を使った正常な入力を生成する。 */
