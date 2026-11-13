@@ -28,4 +28,7 @@ public interface CredentialMapper {
     /** @param credential 新規ユーザーのハッシュ済み認証情報 */
     @Insert("INSERT INTO user_credentials(user_id, login_id, password_hash, draft_namespace) VALUES(#{userId}, #{loginId}, #{passwordHash}, #{draftNamespace})")
     void insert(Credential credential);
+    /** @param userId 本人ID。古いセッションと連携途中の証明を無効にする。 */
+    @Update("UPDATE user_credentials SET auth_version=auth_version+1 WHERE user_id=#{userId}")
+    int incrementAuthVersion(Long userId);
 }

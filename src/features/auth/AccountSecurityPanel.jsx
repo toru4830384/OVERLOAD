@@ -8,7 +8,8 @@ import "./security.css";
 export default function AccountSecurityPanel({ api, onPasswordChanged, disabled = false }) {
   const [status, setStatus] = useState(null), [google, setGoogle] = useState(null), [error, setError] = useState("");
   const [input, setInput] = useState({ currentPassword: "", newPassword: "", confirmation: "" });
-  const [linkPassword, setLinkPassword] = useState(""), [nonce, setNonce] = useState(null), [busy, setBusy] = useState(false);
+  const [nonce, setNonce] = useState(null), [busy, setBusy] = useState(false);
+  const [confirmUnlink, setConfirmUnlink] = useState(false);
   const [message, setMessage] = useState(""), [reload, setReload] = useState(0);
   useEffect(() => {
     let disposed = false;
@@ -35,11 +36,22 @@ export default function AccountSecurityPanel({ api, onPasswordChanged, disabled 
   }
   async function prepareLink(event) {
     event.preventDefault(); if (busy || disabled) return;
-    if (!linkPassword) { setError("Google連携には現在のパスワードを入力してください。"); return; }
     setBusy(true); setError(""); setMessage("");
-    try { const challenge = await api.beginGoogleLink({ currentPassword: linkPassword }); setLinkPassword(""); setNonce(challenge.nonce); }
+    try { const challenge = await api.beginGoogleLink(); setNonce(challenge.nonce); }
     catch (cause) { setError(cause.message); }
     finally { setBusy(false); }
+  }
+  async function unlink() {
+    if (busy || disabled || !status?.hasPassword) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      await api.unlinkGoogle();
+      onPasswordChanged("google-unlinked");
+    } catch (cause) {
+      setError(cause instanceof RequestTimeoutError
+        ? "解除結果を確認できませんでした。自動では再送していません。ログインIDとパスワードでログインし直して連携状態を確認してください。"
+        : cause.message);
+    } finally { setBusy(false); setConfirmUnlink(false); }
   }
   async function link(credential) {
     await api.linkGoogle({ credential }); setNonce(null);
@@ -65,10 +77,16 @@ export default function AccountSecurityPanel({ api, onPasswordChanged, disabled 
     {status && !status.hasPassword && <p>Googleで登録したアカウントです。OVERLOAD用のパスワードは設定されていません。</p>}
     {status && <div>
       <h3>Googleログイン</h3>
-      {status.googleLinked ? <p>Google連携済みです。Googleで同じ記録にログインできます。</p> : google?.enabled ? <>
+      {status.googleLinked ? <>
+        <p>Google連携済みです。Googleで同じ記録にログインできます。</p>
+        {!status.hasPassword ? <p>パスワード未設定のため、Google連携は解除できません。</p> : confirmUnlink ? <div>
+          <p>Google連携を解除しますか？ 記録は残ります。すべての端末でログアウトし、次回はログインIDとパスワードが必要です。</p>
+          <button type="button" disabled={busy || disabled} onClick={unlink}>連携を解除する</button>
+          <button type="button" disabled={busy || disabled} onClick={() => setConfirmUnlink(false)}>キャンセル</button>
+        </div> : <button type="button" disabled={busy || disabled} onClick={() => setConfirmUnlink(true)}>Google連携を解除</button>}
+      </> : google?.enabled ? <>
         <p>IDやパスワードを忘れた場合に備え、今のアカウントへGoogleを連携できます。</p>
         {!nonce ? <form onSubmit={prepareLink}><fieldset disabled={busy || disabled}>
-          <PasswordField label="連携確認用の現在のパスワード" autoComplete="current-password" required minLength={12} maxLength={128} value={linkPassword} onChange={e => setLinkPassword(e.target.value)} />
           <button type="submit">Google連携に進む</button>
         </fieldset></form> : <GoogleSignInButton clientId={google.clientId} nonce={nonce} onCredential={link} onFailure={cause => { setNonce(null); setError(cause.message); }} />}
       </> : <p>Googleログインは準備中です。利用可能になったら、ここから連携できます。</p>}

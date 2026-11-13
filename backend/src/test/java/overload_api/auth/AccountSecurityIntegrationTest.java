@@ -54,7 +54,7 @@ class AccountSecurityIntegrationTest extends MySqlIntegrationTest {
         }
         void challenge(String purpose) throws Exception {
             String path=purpose.equals("link")?"/api/auth/google/link/challenge":"/api/auth/google/challenge";
-            var r=write(path,purpose.equals("link")?Map.of("currentPassword",OLD):Map.of());assertEquals(200,r.getResponse().getStatus(),r.getResponse().getContentAsString());
+            var r=write(path,Map.of());assertEquals(200,r.getResponse().getStatus(),r.getResponse().getContentAsString());
         }
     }
     @Test void passwordChangeRequiresCurrentPasswordAndInvalidatesAllExistingSessions() throws Exception {
@@ -90,7 +90,7 @@ class AccountSecurityIntegrationTest extends MySqlIntegrationTest {
     }
     @Test void googleLinkAllowsRecoveryOfSameAccountAndRejectsOtherOwners() throws Exception {
         var user=create("linked_user");var a=new Browser();a.login(user.loginId(),OLD);
-        assertEquals(400,a.write("/api/auth/google/link/challenge",Map.of("currentPassword","wrong-password-123")).getResponse().getStatus());
+        assertEquals(200,a.write("/api/auth/google/link/challenge",Map.of()).getResponse().getStatus());
         a.challenge("link");assertEquals(204,a.write("/api/auth/google/link",Map.of("credential","subject_a")).getResponse().getStatus());
         assertEquals(400,a.write("/api/auth/google/link",Map.of("credential","subject_a")).getResponse().getStatus());
         var recovered=new Browser();recovered.challenge("login");
@@ -128,5 +128,32 @@ class AccountSecurityIntegrationTest extends MySqlIntegrationTest {
             var a=pool.submit(action);var b=pool.submit(action);start.countDown();assertNotEquals(a.get(20,TimeUnit.SECONDS),b.get(20,TimeUnit.SECONDS));
             assertEquals(1,jdbc.queryForObject("SELECT auth_version FROM user_credentials WHERE user_id=?",Long.class,user.userId()));
         }finally{pool.shutdownNow();}
+    }
+    @Test void unlinkPreservesProfileAndPasswordButInvalidatesSessionsAndPendingLink() throws Exception {
+        var user=create("unlink_user"); var a=new Browser(); var b=new Browser();
+        a.login(user.loginId(),OLD); b.login(user.loginId(),OLD);
+        a.challenge("link"); assertEquals(204,a.write("/api/auth/google/link",Map.of("credential","unlink_subject")).getResponse().getStatus());
+        b.challenge("link");
+        assertEquals(204,a.write("/api/auth/google/unlink",Map.of()).getResponse().getStatus());
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM google_accounts WHERE user_id=?",Integer.class,user.userId()));
+        assertEquals(401,b.write("/api/auth/google/link",Map.of("credential","unlink_subject")).getResponse().getStatus());
+        assertEquals(401,a.read("/api/auth/me").getResponse().getStatus());
+        var fresh=new Browser();fresh.login(user.loginId(),OLD);assertEquals(a.key,fresh.key);
+        assertEquals("本人",JSON.readTree(fresh.read("/api/me").getResponse().getContentAsString()).get("name").asText());
+        var g=new Browser();g.challenge("login");
+        assertEquals("registration_required",JSON.readTree(g.write("/api/auth/google/login",Map.of("credential","unlink_subject")).getResponse().getContentAsString()).get("status").asText());
+        fresh.challenge("link");assertEquals(204,fresh.write("/api/auth/google/link",Map.of("credential","unlink_subject")).getResponse().getStatus());
+    }
+    @Test void unlinkRejectsAnonymousCsrfWrongAccountAndLastLoginMethod() throws Exception {
+        var a=new Browser();assertEquals(401,a.write("/api/auth/google/unlink",Map.of()).getResponse().getStatus());
+        var user=create("protected_unlink");a.login(user.loginId(),OLD);
+        jdbc.update("INSERT INTO google_accounts(user_id,google_subject) VALUES(?,?)",user.userId(),"only_google");
+        assertEquals(403,a.send(post("/api/auth/google/unlink")).getResponse().getStatus());
+        a.key="wrong:account";assertEquals(409,a.write("/api/auth/google/unlink",Map.of()).getResponse().getStatus());
+        a.login(user.loginId(),OLD);
+        jdbc.update("UPDATE user_credentials SET password_hash=NULL WHERE user_id=?",user.userId());
+        assertEquals(409,a.write("/api/auth/google/unlink",Map.of()).getResponse().getStatus());
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM google_accounts WHERE user_id=?",Integer.class,user.userId()));
+        assertEquals(200,a.read("/api/auth/me").getResponse().getStatus());
     }
 }

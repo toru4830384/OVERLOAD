@@ -62,7 +62,8 @@ export function createAccountApi(accountKey, onSessionLost) {
   return Object.freeze({
     getSecurityStatus: () => own("/auth/security"),
     changePassword: input => own("/auth/password", json(input)),
-    beginGoogleLink: input => own("/auth/google/link/challenge", json(input)),
+    beginGoogleLink: () => own("/auth/google/link/challenge", { method: "POST" }),
+    unlinkGoogle: () => own("/auth/google/unlink", { method: "POST" }),
     linkGoogle: input => own("/auth/google/link", json(input)),
     getExercises: signal => own("/exercises", { signal }),
     getProfile: signal => own("/me", { signal }),

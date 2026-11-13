@@ -32,9 +32,9 @@ export default function AuthGate() {
     generation.current++;
     setState({ status: "anonymous", user: null, message: "ログアウトしました。途中の下書きはこの端末に保持しています。" });
   }
-  function passwordChanged() {
+  function passwordChanged(reason) {
     generation.current++;
-    setState({ status: "anonymous", user: null, message: "パスワードを変更しました。新しいパスワードでログインしてください。途中の下書きは保持しています。" });
+    setState({ status: "anonymous", user: null, message: reason === "google-unlinked" ? "Google連携を解除しました。ログインIDとパスワードでログインしてください。途中の下書きは保持しています。" : "パスワードを変更しました。新しいパスワードでログインしてください。途中の下書きは保持しています。" });
   }
   if (state.status === "loading") return <main className="auth-page" role="status">ログイン状態を確認中…</main>;
   if (state.status === "error") return <main className="auth-page"><p role="alert">{state.message}</p><button onClick={() => { setState({ status: "loading", user: null, message: "" }); setRetry(n => n + 1); }}>再試行</button></main>;

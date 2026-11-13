@@ -27,3 +27,23 @@ test("security writes keep account boundary, CSRF and do not retry credential mu
     assert.equal(writes[0].options.headers["X-Overload-Account"], "1:namespace");assert.equal(writes[0].options.headers["X-CSRF-TOKEN"], "csrf");
   } finally { globalThis.fetch = original; }
 });
+
+test("Google link and unlink send no password and retain CSRF and account boundary", async () => {
+  const original = globalThis.fetch, calls = [];
+  try {
+    globalThis.fetch = async (url, options) => {
+      calls.push({ url, options });
+      if (url.endsWith("/csrf")) return { ok: true, json: async () => ({ token: "csrf", headerName: "X-CSRF-TOKEN" }) };
+      return { ok: true, status: 204 };
+    };
+    const api = createAccountApi("1:namespace");
+    await api.beginGoogleLink(); await api.unlinkGoogle();
+    const writes = calls.filter(c => c.options.method === "POST");
+    assert.equal(writes.length, 2);
+    for (const { options } of writes) {
+      assert.equal(options.body, undefined);
+      assert.equal(options.headers["X-Overload-Account"], "1:namespace");
+      assert.equal(options.headers["X-CSRF-TOKEN"], "csrf");
+    }
+  } finally { globalThis.fetch = original; }
+});

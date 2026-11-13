@@ -29,7 +29,7 @@ public class GoogleAccountService {
         catch(DuplicateKeyException e) {throw new RequestConflictException("このログインIDまたはGoogleアカウントは利用できません");}
         return identity(c);
     }
-    /** 再認証時と同じ本人だけに連携する。別アカウントの連携や置換は拒否する。 */
+    /** ログイン中の同じ本人だけに連携する。別アカウントの連携や置換は拒否する。 */
     @Transactional
     public void link(UserIdentity user,String subject) {
         var c=credentials.lockByUserId(user.userId());
@@ -39,5 +39,17 @@ public class GoogleAccountService {
         if(old!=null) throw new RequestConflictException("すでに別のGoogleアカウントと連携しています");
         try {google.insert(user.userId(),subject);}
         catch(DuplicateKeyException e) {throw new RequestConflictException("このGoogleアカウントは別の利用者と連携しています");}
+    }
+    /** パスワードによるログイン手段を残したまま連携を解除する。競合は認証行で直列化する。 */
+    @Transactional
+    public void unlink(UserIdentity user) {
+        var c=credentials.lockByUserId(user.userId());
+        if(c==null || c.authVersion()!=user.authVersion())
+            throw new IllegalArgumentException("認証情報が変更されています。再度ログインしてください");
+        if(c.passwordHash()==null)
+            throw new RequestConflictException("パスワード未設定のため、Google連携を解除できません");
+        google.deleteForUser(user.userId());
+        credentials.incrementAuthVersion(user.userId());
+        credentials.deleteSessions(user.loginId());
     }
 }

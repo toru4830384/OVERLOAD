@@ -54,13 +54,20 @@ public class AccountSecurityController {
         return login.login(identity,request,response);
     }
     @PostMapping("/google/link/challenge")
-    public ChallengeResponse linkChallenge(@Valid @RequestBody AccountSecurityRequests.CurrentPassword body,HttpServletRequest request) {
-        requireEnabled();var user=CurrentUser.identity();security.confirmPassword(user,AccountSecurityApiMapper.toCommand(body));
+    public ChallengeResponse linkChallenge(HttpServletRequest request) {
+        requireEnabled();var user=CurrentUser.identity();
         return new ChallengeResponse(challenges.issue(request.getSession(),"link",user));
     }
     @PostMapping("/google/link") @ResponseStatus(HttpStatus.NO_CONTENT)
     public void link(@Valid @RequestBody AccountSecurityRequests.GoogleCredential body,HttpServletRequest request) {
         requireEnabled();var user=CurrentUser.identity();String nonce=challenges.consume(request.getSession(),"link",user);
         google.link(user,verifier.verify(body.credential(),nonce));
+    }
+    /** ログイン中の本人の連携だけ解除し、解除前の全セッションを失効させる。 */
+    @PostMapping("/google/unlink") @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void unlink(HttpServletRequest request,HttpServletResponse response) {
+        google.unlink(CurrentUser.identity());
+        new org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler().logout(request,response,SecurityContextHolder.getContext().getAuthentication());
+        new org.springframework.security.web.authentication.logout.CookieClearingLogoutHandler("SESSION").logout(request,response,null);
     }
 }

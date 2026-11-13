@@ -13,4 +13,7 @@ public interface GoogleAccountMapper {
     String subjectForUser(Long userId);
     @Insert("INSERT INTO google_accounts(user_id,google_subject) VALUES(#{userId},#{subject})")
     void insert(@Param("userId") Long userId,@Param("subject") String subject);
+    /** @param userId セッションで確定した本人。記録やプロフィールは削除しない。 */
+    @Delete("DELETE FROM google_accounts WHERE user_id=#{userId}")
+    int deleteForUser(Long userId);
 }

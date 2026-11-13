@@ -9,7 +9,7 @@ public class AccountBoundaryFilter extends OncePerRequestFilter {
     /** @return 個人データAPIだけにアカウント境界を要求する */
     @Override protected boolean shouldNotFilter(HttpServletRequest request) {
         String p = ApiPaths.path(request);
-        return !(p.equals("/api/auth/logout") || p.equals("/api/auth/password") || p.equals("/api/auth/security") || p.startsWith("/api/auth/google/link") || p.equals("/api/me") || p.startsWith("/api/workouts")
+        return !(p.equals("/api/auth/logout") || p.equals("/api/auth/password") || p.equals("/api/auth/security") || p.equals("/api/auth/google/unlink") || p.startsWith("/api/auth/google/link") || p.equals("/api/me") || p.startsWith("/api/workouts")
                 || p.equals("/api/workout-sessions") || p.equals("/api/workout-sets"));
     }
     /** 認証情報と画面の所有者キーを照合し、不一致ならServiceへ進めない。 */
